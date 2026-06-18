@@ -1,0 +1,44 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+.next/
+frontend/.next/
+*.tsbuildinfo
+dist/
+build/
+
+# Python cache/test output
+__pycache__/
+*.py[cod]
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Runtime files
+uploads/
+*.log
+*.out
+*.err
+*tunnel*.log
+*tunnel*.out
+*tunnel*.err
+
+# OS/editor
+.DS_Store
+Thumbs.db
+nul
+.idea/
+.vscode/
+.superpowers/
