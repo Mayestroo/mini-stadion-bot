@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { authTelegram } from "@/lib/api";
+import { AdminErrorBoundary } from "@/components/admin/AdminShell";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -13,20 +14,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!hydrated || checkDone) return;
-    if (isAuthenticated && (user?.role === "moderator" || user?.role === "superadmin")) {
-      setCheckDone(true);
+
+    if (isAuthenticated) {
+      if (user?.role === "moderator" || user?.role === "superadmin") {
+        setCheckDone(true);
+        return;
+      }
+      router.push("/login?redirect=" + encodeURIComponent(pathname));
       return;
     }
 
     const tg = (window as any).Telegram?.WebApp;
     const tgUser = tg?.initDataUnsafe?.user;
-    if (tgUser && !isAuthenticated) {
+    const initData = tg?.initData || "";
+    if (tgUser && initData) {
       reAuthing.current = true;
-      authTelegram({
-        telegram_id: String(tgUser.id),
-        username: tgUser.username || "",
-        full_name: `${tgUser.first_name} ${tgUser.last_name || ""}`.trim(),
-      })
+      authTelegram({ init_data: initData })
         .then((data) => {
           if (data.user.phone) {
             login(data.user, data.access_token);
@@ -47,7 +50,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (isAuthenticated && (user?.role === "moderator" || user?.role === "superadmin")) {
       setCheckDone(true);
     }
-  }, [isAuthenticated, user]);
+    if (isAuthenticated && user?.role !== "moderator" && user?.role !== "superadmin") {
+      router.push("/login?redirect=" + encodeURIComponent(pathname));
+    }
+  }, [isAuthenticated, user, router, pathname]);
 
   if (!checkDone) {
     return (
@@ -61,5 +67,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  return <>{children}</>;
+  return <AdminErrorBoundary>{children}</AdminErrorBoundary>;
 }

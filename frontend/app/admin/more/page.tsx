@@ -1,19 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useAuthStore } from "@/store/auth";
 import { BarChart3, Bell, ClipboardCheck, Megaphone, ScrollText, Users } from "lucide-react";
 import { AdminCard, AdminShell } from "@/components/admin/AdminShell";
 
-const items = [
+const superadminItems = [
   { href: "/admin/owners", label: "Ownerlar", text: "Owner yaratish va boshqarish", icon: Users },
   { href: "/admin/moderation/stadiums", label: "Moderatsiya", text: "Stadion, rasm va cancel requestlar", icon: ClipboardCheck },
-  { href: "/admin/notifications", label: "Inbox", text: "Admin tizim xabarlari", icon: Bell },
   { href: "/admin/broadcast", label: "Ommaviy xabar", text: "Broadcast va reklama yuborish", icon: Megaphone },
   { href: "/admin/audit", label: "Audit log", text: "Superadmin action tarixi", icon: ScrollText },
   { href: "/admin/statistics", label: "Statistika", text: "Revenue, booking va bot metrikalari", icon: BarChart3 },
 ];
 
+const commonItems = [
+  { href: "/admin/notifications", label: "Inbox", text: "Admin tizim xabarlari", icon: Bell },
+];
+
 export default function AdminMorePage() {
+  const { user } = useAuthStore();
+  const items = user?.role === "superadmin" ? [...commonItems, ...superadminItems] : commonItems;
   return (
     <AdminShell title="More" subtitle="Qo'shimcha boshqaruv bo'limlari">
       <div style={{ display: "grid", gap: 10 }}>

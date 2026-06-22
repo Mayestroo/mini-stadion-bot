@@ -11,6 +11,15 @@ class BookingCreate(BaseModel):
     end_time: str
     note: Optional[str] = None
 
+    @field_validator("note")
+    @classmethod
+    def limit_note(cls, v):
+        if v is not None:
+            v = v.strip()[:500]
+            if not v:
+                return None
+        return v
+
     @field_validator("date")
     @classmethod
     def validate_date(cls, v):

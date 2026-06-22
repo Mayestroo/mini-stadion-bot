@@ -1,49 +1,49 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: andijonarena_postgres
+    container_name: maydoncha_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-andijan_futbol}
+      POSTGRES_DB: ${POSTGRES_DB:-maydoncha}
       POSTGRES_USER: ${POSTGRES_USER:-andijan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - andijonarena_pg_data:/var/lib/postgresql/data
+      - maydoncha_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-andijan_futbol}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-maydoncha}"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - andijonarena_internal
+      - maydoncha_internal
 
   backend:
     build: ./backend
-    container_name: andijonarena_backend
+    container_name: maydoncha_backend
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    command: sh -c "python -c 'from app.core.database import Base, engine; from app import models; Base.metadata.create_all(bind=engine)' && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     expose:
       - "8000"
     volumes:
-      - andijonarena_uploads:/app/uploads
+      - maydoncha_uploads:/app/uploads
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      andijonarena_internal:
+      maydoncha_internal:
       ielts_proxy:
         aliases:
-          - andijonarena_backend
+          - maydoncha_backend
 
   worker:
     build: ./backend
-    container_name: andijonarena_worker
+    container_name: maydoncha_worker
     restart: unless-stopped
     command: python -m app.worker
     volumes:
-      - andijonarena_uploads:/app/uploads
+      - maydoncha_uploads:/app/uploads
     env_file:
       - .env
     depends_on:
@@ -52,7 +52,7 @@ services:
       backend:
         condition: service_started
     networks:
-      - andijonarena_internal
+      - maydoncha_internal
 
   frontend:
     build:
@@ -62,7 +62,7 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_KEY}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-    container_name: andijonarena_frontend
+    container_name: maydoncha_frontend
     restart: unless-stopped
     expose:
       - "3000"
@@ -73,16 +73,16 @@ services:
     networks:
       ielts_proxy:
         aliases:
-          - andijonarena_frontend
+          - maydoncha_frontend
 
 networks:
-  andijonarena_internal:
-    name: andijonarena_internal
+  maydoncha_internal:
+    name: maydoncha_internal
     driver: bridge
   ielts_proxy:
     external: true
     name: ielts-prod_internal
 
 volumes:
-  andijonarena_pg_data:
-  andijonarena_uploads:
+  maydoncha_pg_data:
+  maydoncha_uploads:

@@ -1,3 +1,8 @@
+import hmac
+import hashlib
+import time
+from urllib.parse import parse_qsl, unquote
+
 import httpx
 from dataclasses import dataclass
 
@@ -96,3 +101,40 @@ def send_booking_action_message(chat_id: str | int | None, title: str, message: 
 def send_admin_message(text: str) -> None:
     for chat_id in admin_telegram_ids():
         send_telegram_message(chat_id, text)
+
+
+def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
+    """Verify Telegram WebApp initData and return user data if valid."""
+    try:
+        parsed = dict(parse_qsl(init_data, keep_blank_values=True))
+    except Exception:
+        return None
+
+    hash_value = parsed.pop("hash", None)
+    if not hash_value:
+        return None
+
+    auth_date = parsed.get("auth_date")
+    if auth_date:
+        try:
+            if time.time() - int(auth_date) > 86400:
+                return None
+        except (ValueError, TypeError):
+            return None
+
+    data_check_string = "\n".join(
+        f"{k}={v}" for k, v in sorted(parsed.items())
+    )
+
+    secret_key = hmac.new(
+        b"WebAppData", bot_token.encode(), hashlib.sha256
+    ).digest()
+
+    computed_hash = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
+    ).hexdigest()
+
+    if computed_hash != hash_value:
+        return None
+
+    return parsed

@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -47,13 +48,16 @@ def notify_user(
         send_telegram_message(user.telegram_id, f"{title}\n\n{message}")
 
 
-def notify_superadmins(
+def notify_admins(
     db: Session,
     title: str,
     message: str,
     notification_type: NotificationType = NotificationType.system,
 ) -> None:
-    admins = db.query(User).filter(User.role == UserRole.superadmin, User.is_active == True).all()
+    admins = db.query(User).filter(
+        User.role.in_([UserRole.moderator, UserRole.superadmin]),
+        User.is_active == True,
+    ).all()
     for admin in admins:
         notify_user(db, admin, title, message, notification_type)
 
@@ -94,7 +98,7 @@ def create_broadcast(
 def process_broadcast_queue(limit: int = 25) -> None:
     db = SessionLocal()
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         recipients = (
             db.query(BroadcastRecipient)
             .join(Broadcast)
@@ -117,7 +121,7 @@ def process_broadcast_queue(limit: int = 25) -> None:
             broadcast = recipient.broadcast
             broadcast.status = BroadcastStatus.sending
             recipient.attempt_count += 1
-            recipient.last_attempt_at = datetime.utcnow()
+            recipient.last_attempt_at = datetime.now(timezone.utc)
             try:
                 create_notification(db, recipient.user_id, broadcast.title, broadcast.message, NotificationType.broadcast)
                 sent = send_telegram_broadcast(
@@ -132,7 +136,7 @@ def process_broadcast_queue(limit: int = 25) -> None:
                 if not sent:
                     raise RuntimeError(sent.error or "Telegram xabar yuborilmadi")
                 recipient.status = BroadcastRecipientStatus.sent
-                recipient.sent_at = datetime.utcnow()
+                recipient.sent_at = datetime.now(timezone.utc)
                 recipient.locked_at = None
                 recipient.error = None
             except Exception as exc:
@@ -196,3 +200,42 @@ def retry_failed_recipients(db: Session, broadcast: Broadcast) -> int:
     broadcast.status = BroadcastStatus.queued
     _refresh_broadcast_status(db, broadcast)
     return count
+
+
+def get_notifications_for_user(
+    db: Session,
+    user_id: int,
+    q: str | None = None,
+    type: str | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> dict:
+    limit = min(max(limit, 1), 100)
+    query = db.query(Notification).filter(Notification.user_id == user_id)
+    if type and type != "all":
+        query = query.filter(Notification.type == type)
+    if q:
+        pattern = f"%{q.strip()}%"
+        query = query.filter(or_(Notification.title.ilike(pattern), Notification.message.ilike(pattern)))
+    total_count = query.count()
+    notifications = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
+    unread_count = db.query(Notification).filter(Notification.user_id == user_id, Notification.is_read == False).count()
+    return {"unread_count": unread_count, "total_count": total_count, "notifications": notifications}
+
+
+def get_unread_count_for_user(db: Session, user_id: int) -> int:
+    return db.query(Notification).filter(Notification.user_id == user_id, Notification.is_read == False).count()
+
+
+def mark_all_read_for_user(db: Session, user_id: int) -> None:
+    db.query(Notification).filter(Notification.user_id == user_id, Notification.is_read == False).update({"is_read": True})
+    db.commit()
+
+
+def mark_notification_read_for_user(db: Session, user_id: int, notification_id: int) -> Notification | None:
+    notification = db.query(Notification).filter(Notification.id == notification_id, Notification.user_id == user_id).first()
+    if not notification:
+        return None
+    notification.is_read = True
+    db.commit()
+    return notification

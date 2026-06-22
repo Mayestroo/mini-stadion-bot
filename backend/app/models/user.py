@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
 import enum
 
-from app.core.database import Base
+from app.core.database import Base, utcnow
 
 
 class UserRole(str, enum.Enum):
@@ -28,8 +27,10 @@ class User(Base):
     telegram_id = Column(String(50), unique=True, nullable=True, index=True)
     telegram_username = Column(String(100), nullable=True)
     avatar_url = Column(String(300), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     bookings = relationship("Booking", back_populates="user", lazy="dynamic")
     stadiums = relationship("Stadium", back_populates="owner", lazy="dynamic", foreign_keys="Stadium.owner_id")

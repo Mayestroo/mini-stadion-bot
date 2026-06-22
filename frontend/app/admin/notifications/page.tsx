@@ -25,15 +25,19 @@ export default function AdminNotificationsPage() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
 
   const loadNotifications = useCallback(async () => {
     setLoading(true);
+    setError("");
     try {
       const data = await notificationApi.getAll({ q: query || undefined, type: type === "all" ? undefined : type, limit: 80 });
       setItems(data.notifications || []);
       setUnreadCount(data.unread_count || 0);
+    } catch {
+      setError("Xatolik yuz berdi");
     } finally {
       setLoading(false);
     }
@@ -75,6 +79,8 @@ export default function AdminNotificationsPage() {
 
       {loading ? (
         <AdminCard>Yuklanmoqda...</AdminCard>
+      ) : error ? (
+        <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard>
       ) : items.length === 0 ? (
         <AdminEmptyState icon={<Bell size={26} />} title="Hali xabar yo'q" text="Admin xabarlari shu yerda ko'rinadi." />
       ) : (

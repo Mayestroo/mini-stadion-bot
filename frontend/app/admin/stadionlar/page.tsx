@@ -7,7 +7,7 @@ import { MapPinned, Plus, Warehouse } from "lucide-react";
 import { AdminCard, AdminEmptyState, AdminLoading, AdminShell, AdminStatusBadge } from "@/components/admin/AdminShell";
 
 export default function AdminStadiums() {
-  const { data: stadiums = [], isLoading } = useQuery({
+  const { data: stadiums = [], isLoading, isError } = useQuery({
     queryKey: ["admin-stadiums"],
     queryFn: () => stadiumApi.getAll({ limit: 100 }),
   });
@@ -27,6 +27,8 @@ export default function AdminStadiums() {
 
         {isLoading ? (
           <AdminLoading />
+        ) : isError ? (
+          <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Stadionlarni yuklab bo'lmadi.</p></AdminCard>
         ) : stadiums.length === 0 ? (
           <AdminEmptyState icon={<Warehouse size={28} />} title="Stadionlar yo'q" text="Birinchi stadionni qo'shish uchun yuqoridagi tugmadan foydalaning." />
         ) : (

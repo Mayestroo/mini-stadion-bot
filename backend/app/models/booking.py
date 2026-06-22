@@ -1,9 +1,8 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
 import enum
 
-from app.core.database import Base
+from app.core.database import Base, utcnow
 
 
 class BookingStatus(str, enum.Enum):
@@ -36,8 +35,8 @@ class Booking(Base):
 
     telegram_message_id = Column(Integer, nullable=True)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", back_populates="bookings")
     stadium = relationship("Stadium", back_populates="bookings")

@@ -1,31 +1,32 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: andijan_postgres
+    container_name: maydoncha_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-andijan_futbol}
+      POSTGRES_DB: ${POSTGRES_DB:-maydoncha}
       POSTGRES_USER: ${POSTGRES_USER:-andijan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-andijan}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-andijan_futbol}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-maydoncha}"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
     networks:
-      - andijan_net
+      - maydoncha_net
 
   backend:
     build: ./backend
-    container_name: andijan_backend
+    container_name: maydoncha_backend
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 30"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./uploads:/app/uploads
     env_file:
@@ -33,12 +34,19 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    stop_grace_period: 30s
     networks:
-      - andijan_net
+      - maydoncha_net
 
   worker:
     build: ./backend
-    container_name: andijan_worker
+    container_name: maydoncha_worker
     restart: unless-stopped
     command: python -m app.worker
     volumes:
@@ -50,8 +58,9 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
+    stop_grace_period: 10s
     networks:
-      - andijan_net
+      - maydoncha_net
 
   frontend:
     build:
@@ -61,20 +70,27 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_KEY}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-    container_name: andijan_frontend
+    container_name: maydoncha_frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000',r=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    stop_grace_period: 30s
     networks:
-      - andijan_net
+      - maydoncha_net
 
 
 networks:
-  andijan_net:
+  maydoncha_net:
     driver: bridge
 
 volumes:

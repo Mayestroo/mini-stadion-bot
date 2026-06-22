@@ -24,12 +24,12 @@ async def _send_mini_app_entry(bot: Bot, chat_id: int, user) -> None:
     webapp_url = _build_mini_app_url(user)
     text = (
         f"Assalomu alaykum, {user.first_name}! 👋\n\n"
-        "🏟 *Andijon arena* — Andijondagi mini futbol stadionlarini "
+        "🏟 *Maydoncha* — mini futbol stadionlarini "
         "topish va bron qilish uchun qulay platforma.\n\n"
         "Quyidagi tugmani bosib Mini Appni oching 👇"
     )
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⚽ Andijon arena ochish", web_app=WebAppInfo(url=webapp_url))]
+        [InlineKeyboardButton("⚽ Maydoncha ochish", web_app=WebAppInfo(url=webapp_url))]
     ])
     await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard)
 
@@ -44,8 +44,7 @@ async def _send_help(bot: Bot, chat_id: int, user) -> None:
         "• Bronlaringizni kuzatishingiz mumkin\n\n"
         "*Komandalar:*\n"
         "/start — Mini Appni ochish\n"
-        "/yordam — Yordam\n\n"
-        "*Aloqa:* 📞 +998901234567"
+        "/yordam — Yordam"
     )
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("⚽ Ochish", web_app=WebAppInfo(url=webapp_url))]
@@ -120,10 +119,8 @@ async def telegram_webhook(
             chat_id=chat.id,
             text=(
                 "📞 *Aloqa ma'lumotlari*\n\n"
-                "📱 Telefon: +998901234567\n"
-
-                "🌐 Web: andijanfutbol.uz\n"
-                "💬 Telegram: @andijanfutbol"
+                f"🌐 Web: {settings.CONTACT_WEBSITE}\n"
+                f"💬 Telegram: {settings.CONTACT_TELEGRAM}"
             ),
             parse_mode="Markdown",
         )
@@ -239,6 +236,10 @@ def bot_update_booking_status(
     booking = db.query(Booking).filter(Booking.id == data.booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Bron topilmadi")
+
+    valid = {"pending", "confirmed", "cancelled", "completed", "no_show"}
+    if data.status not in valid:
+        raise HTTPException(status_code=400, detail=f"Status '{data.status}' noto'g'ri")
 
     booking.status = data.status
     db.commit()

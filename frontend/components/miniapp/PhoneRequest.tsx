@@ -8,25 +8,21 @@ import { ContactRound } from "lucide-react";
 
 export default function PhoneRequest() {
   const router = useRouter();
-  const { theme, requestContact, user: tgUser } = useTelegram();
+  const { theme, requestContact, user: tgUser, initData } = useTelegram();
   const { login } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (tgUser) {
-      authTelegram({
-        telegram_id: String(tgUser.id),
-        username: tgUser.username || "",
-        full_name: `${tgUser.first_name} ${tgUser.last_name || ""}`.trim(),
-      }).then((data) => {
+    if (tgUser && initData) {
+      authTelegram({ init_data: initData }).then((data) => {
         if (data.user.phone) {
           login(data.user, data.access_token);
           router.replace("/miniapp");
         }
       }).catch(() => {});
     }
-  }, [login, router, tgUser]);
+  }, [login, router, tgUser, initData]);
 
   const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";
 
@@ -46,9 +42,7 @@ export default function PhoneRequest() {
       }
 
       const data = await authTelegram({
-        telegram_id: String(tgUser.id),
-        username: tgUser.username || "",
-        full_name: `${tgUser.first_name} ${tgUser.last_name || ""}`.trim(),
+        init_data: initData,
         phone: contact.phone_number,
       });
       login(data.user, data.access_token);
@@ -70,7 +64,7 @@ export default function PhoneRequest() {
           <ContactRound size={42} strokeWidth={2.35} />
         </div>
 
-        <div className="mini-eyebrow">Andijon arena</div>
+        <div className="mini-eyebrow">Maydoncha</div>
         <h2 className="mini-large-title" style={{ fontSize: 30 }}>Ro'yxatdan o'tish</h2>
         <p className="mini-subtitle" style={{ marginBottom: 22 }}>
           Bron qilish uchun Telegram kontakt ulashish funksiyasi orqali telefon raqamingizni tasdiqlang.

@@ -25,7 +25,6 @@ type Broadcast = {
 type Recipient = {
   id: number;
   user_name: string;
-  telegram_id?: string | null;
   status: string;
   error?: string | null;
   attempt_count: number;
@@ -45,6 +44,7 @@ export default function AdminBroadcastPage() {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [recipients, setRecipients] = useState<Record<number, Recipient[]>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [targetCount, setTargetCount] = useState<number | null>(null);
@@ -52,8 +52,11 @@ export default function AdminBroadcastPage() {
 
   const loadBroadcasts = async (showLoading = true) => {
     if (showLoading) setLoading(true);
+    setError("");
     try {
       setBroadcasts(await superadminApi.getBroadcasts());
+    } catch {
+      setError("Xatolik yuz berdi");
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -64,7 +67,9 @@ export default function AdminBroadcastPage() {
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(() => loadBroadcasts(false), 5000);
+    const interval = window.setInterval(() => {
+      if (!document.hidden) loadBroadcasts(false);
+    }, 5000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -73,12 +78,15 @@ export default function AdminBroadcastPage() {
       setTargetCount(null);
       return;
     }
-    superadminApi.previewBroadcast({
-      audience,
-      stadium_id: stadiumId ? Number(stadiumId) : undefined,
-      title,
-      message,
-    }).then((data) => setTargetCount(data.target_count)).catch(() => setTargetCount(null));
+    const timer = setTimeout(() => {
+      superadminApi.previewBroadcast({
+        audience,
+        stadium_id: stadiumId ? Number(stadiumId) : undefined,
+        title,
+        message,
+      }).then((data) => setTargetCount(data.target_count)).catch(() => setTargetCount(null));
+    }, 300);
+    return () => clearTimeout(timer);
   }, [audience, stadiumId, title, message]);
 
   const uploadImage = async (file?: File) => {
@@ -194,6 +202,8 @@ export default function AdminBroadcastPage() {
 
       {loading ? (
         <AdminCard>Yuklanmoqda...</AdminCard>
+      ) : error ? (
+        <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard>
       ) : broadcasts.length === 0 ? (
         <AdminEmptyState icon={<Megaphone size={26} />} title="Hali xabar yo'q" text="Yuborilgan ommaviy xabarlar shu yerda ko'rinadi." />
       ) : (
@@ -222,7 +232,7 @@ export default function AdminBroadcastPage() {
                 <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
                   {recipients[item.id].map((recipient) => (
                     <div key={recipient.id} className="mini-card-solid" style={{ padding: 10, fontSize: 12 }}>
-                      <strong>{recipient.user_name}</strong> <span style={{ color: "var(--mini-muted)" }}>({recipient.telegram_id || "telegram yo'q"})</span>
+                      <strong>{recipient.user_name}</strong>
                       <div>Status: {recipient.status} | urinish: {recipient.attempt_count}</div>
                       {recipient.error ? <div style={{ color: "var(--mini-red)", overflowWrap: "anywhere" }}>{recipient.error}</div> : null}
                     </div>

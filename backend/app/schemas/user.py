@@ -19,8 +19,14 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v):
-        if len(v) < 6:
-            raise ValueError("Parol kamida 6 ta belgidan iborat bo'lishi kerak")
+        if len(v) < 8:
+            raise ValueError("Parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Parolda kamida bitta kichik harf bo'lishi kerak")
+        if not re.search(r"\d", v):
+            raise ValueError("Parolda kamida bitta raqam bo'lishi kerak")
         return v
 
 
@@ -50,9 +56,22 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     must_change_password: bool
-    telegram_id: Optional[str]
     avatar_url: Optional[str]
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PrivateUserResponse(UserResponse):
+    telegram_id: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserResponse(UserResponse):
+    telegram_id: Optional[str]
 
     class Config:
         from_attributes = True
@@ -61,4 +80,4 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: UserResponse
+    user: PrivateUserResponse

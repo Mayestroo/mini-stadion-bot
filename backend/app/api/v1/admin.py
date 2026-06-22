@@ -1,8 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import and_, case, func
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -11,7 +11,9 @@ from app.core.analytics import track_event
 from app.core.audit import write_audit
 from app.core.database import get_db
 from app.core.dependencies import get_current_superadmin
+from app.core.ratelimit import rate_limit
 from app.core.notifications import broadcast_target_count, create_broadcast, notify_user, retry_failed_recipients
+from app.core.sanitize import sanitize_message
 from app.core.security import get_password_hash
 from app.models.analytics import AnalyticsEvent
 from app.models.audit import AuditLog
@@ -37,7 +39,7 @@ from app.schemas.owner import (
     OwnerUpdate,
     StadiumDraftResponse,
 )
-from app.schemas.user import UserResponse
+from app.schemas.user import AdminUserResponse, UserResponse
 
 router = APIRouter(prefix="/admin", tags=["Superadmin"])
 
@@ -71,12 +73,14 @@ STADIUM_APPLY_FIELDS = [
 ]
 
 
-@router.get("/owners", response_model=List[UserResponse])
+@router.get("/owners", response_model=List[AdminUserResponse])
 def get_owners(
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(User).filter(User.role == UserRole.owner).order_by(User.created_at.desc()).all()
+    return db.query(User).filter(User.role == UserRole.owner).order_by(User.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.get("/audit", response_model=List[AuditLogResponse])
@@ -121,6 +125,7 @@ def get_audit_logs(
 
 
 @router.post("/broadcasts/preview")
+@rate_limit(max_requests=30, window_seconds=60)
 def preview_broadcast_targets(
     data: BroadcastCreate,
     db: Session = Depends(get_db),
@@ -134,7 +139,7 @@ def get_statistics(
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     starts = {
         "today": now.replace(hour=0, minute=0, second=0, microsecond=0),
         "week": now - timedelta(days=7),
@@ -143,50 +148,96 @@ def get_statistics(
     }
 
     revenue_statuses = [BookingStatus.confirmed, BookingStatus.completed]
-    revenue = {
-        "total": _revenue_sum(db.query(Booking).filter(Booking.status.in_(revenue_statuses))),
-        "bot_total": _revenue_sum(
-            db.query(Booking).join(User, Booking.user_id == User.id).filter(
-                Booking.status.in_(revenue_statuses),
-                User.telegram_id.isnot(None),
-            )
-        ),
-    }
 
-    for key, start in starts.items():
-        revenue[key] = _revenue_sum(
-            db.query(Booking).filter(Booking.status.in_(revenue_statuses), Booking.created_at >= start)
+    revenue_query = (
+        db.query(
+            func.sum(Booking.total_price).label("total"),
+            func.sum(case((User.telegram_id.isnot(None), Booking.total_price), else_=0)).label("bot_total"),
+            *[
+                func.sum(case((Booking.created_at >= start, Booking.total_price), else_=0)).label(key)
+                for key, start in starts.items()
+            ],
+            *[
+                func.sum(
+                    case(
+                        (and_(User.telegram_id.isnot(None), Booking.created_at >= start), Booking.total_price),
+                        else_=0,
+                    )
+                ).label(f"bot_{key}")
+                for key, start in starts.items()
+            ],
         )
-        revenue[f"bot_{key}"] = _revenue_sum(
-            db.query(Booking).join(User, Booking.user_id == User.id).filter(
-                Booking.status.in_(revenue_statuses),
-                User.telegram_id.isnot(None),
-                Booking.created_at >= start,
-            )
+        .join(User, Booking.user_id == User.id)
+        .filter(Booking.status.in_(revenue_statuses))
+        .first()
+    )
+    revenue = {}
+    for column in revenue_query._fields:
+        revenue[column] = int(getattr(revenue_query, column) or 0)
+
+    status_counts = (
+        db.query(Booking.status, func.count(Booking.id))
+        .group_by(Booking.status)
+        .all()
+    )
+    booking_statuses = {s.value: c for s, c in status_counts}
+
+    total_bookings = sum(booking_statuses.values())
+    avg_price = (
+        db.query(func.avg(Booking.total_price))
+        .filter(Booking.status.in_(revenue_statuses))
+        .scalar()
+        or 0
+    )
+    average_booking_price = int(avg_price)
+
+    bot_events_row = (
+        db.query(
+            *[
+                func.sum(case((AnalyticsEvent.created_at >= start, 1), else_=0)).label(key)
+                for key, start in starts.items()
+            ]
         )
-
-    booking_statuses = {
-        status.value: db.query(Booking).filter(Booking.status == status).count()
-        for status in BookingStatus
-    }
-    total_bookings = db.query(Booking).count()
-    average_booking_price = int((db.query(func.avg(Booking.total_price)).scalar() or 0))
-
+        .filter(AnalyticsEvent.event_type.in_(["bot_start", "miniapp_auth"]))
+        .first()
+    )
     bot_events = {}
-    for key, start in starts.items():
-        bot_events[key] = db.query(AnalyticsEvent).filter(
-            AnalyticsEvent.event_type.in_(["bot_start", "miniapp_auth"]),
-            AnalyticsEvent.created_at >= start,
-        ).count()
-    unique_telegram_users = db.query(func.count(func.distinct(AnalyticsEvent.telegram_id))).filter(
-        AnalyticsEvent.telegram_id.isnot(None)
-    ).scalar() or 0
+    for column in bot_events_row._fields:
+        bot_events[column] = getattr(bot_events_row, column) or 0
 
+    unique_telegram_users = (
+        db.query(func.count(func.distinct(AnalyticsEvent.telegram_id)))
+        .filter(AnalyticsEvent.telegram_id.isnot(None))
+        .scalar()
+        or 0
+    )
+
+    conversion_row = (
+        db.query(
+            func.sum(case((AnalyticsEvent.event_type == "bot_start", 1), else_=0)).label("bot_start"),
+            func.sum(case((AnalyticsEvent.event_type.in_(["bot_save_phone", "miniapp_auth"]), 1), else_=0)).label("phone_or_auth"),
+            func.sum(case((AnalyticsEvent.event_type == "booking_created", 1), else_=0)).label("booking_created"),
+        )
+        .first()
+    )
     conversion = {
-        "bot_start": db.query(AnalyticsEvent).filter(AnalyticsEvent.event_type == "bot_start").count(),
-        "phone_or_auth": db.query(AnalyticsEvent).filter(AnalyticsEvent.event_type.in_(["bot_save_phone", "miniapp_auth"])).count(),
-        "booking_created": db.query(AnalyticsEvent).filter(AnalyticsEvent.event_type == "booking_created").count(),
+        "bot_start": conversion_row.bot_start or 0,
+        "phone_or_auth": conversion_row.phone_or_auth or 0,
+        "booking_created": conversion_row.booking_created or 0,
     }
+
+    new_users_row = (
+        db.query(
+            *[
+                func.sum(case((User.created_at >= start, 1), else_=0)).label(key)
+                for key, start in starts.items()
+            ]
+        )
+        .first()
+    )
+    new_users = {}
+    for column in new_users_row._fields:
+        new_users[column] = getattr(new_users_row, column) or 0
 
     top_by_bookings = [
         {"stadium_id": row.stadium_id, "name": row.name, "bookings": row.bookings}
@@ -221,7 +272,7 @@ def get_statistics(
         "average_booking_price": average_booking_price,
         "bot_events": bot_events,
         "unique_telegram_users": unique_telegram_users,
-        "new_users": {key: db.query(User).filter(User.created_at >= start).count() for key, start in starts.items()},
+        "new_users": new_users,
         "conversion": conversion,
         "top_by_bookings": top_by_bookings,
         "top_by_revenue": top_by_revenue,
@@ -238,12 +289,13 @@ def get_broadcasts(
 
 
 @router.post("/broadcasts", response_model=BroadcastResponse)
+@rate_limit(max_requests=5, window_seconds=60)
 def create_broadcast_message(
     data: BroadcastCreate,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    recent = db.query(Broadcast).filter(Broadcast.created_by == superadmin.id, Broadcast.created_at >= datetime.utcnow() - timedelta(minutes=1)).first()
+    recent = db.query(Broadcast).filter(Broadcast.created_by == superadmin.id, Broadcast.created_at >= datetime.now(timezone.utc) - timedelta(minutes=1)).first()
     if recent:
         raise HTTPException(status_code=429, detail="1 daqiqada faqat bitta ommaviy xabar yuborish mumkin")
 
@@ -251,12 +303,15 @@ def create_broadcast_message(
     if active:
         raise HTTPException(status_code=400, detail="Avvalgi ommaviy xabar hali yuborilmoqda")
 
+    sanitized_title = sanitize_message(data.title, data.parse_mode)
+    sanitized_message = sanitize_message(data.message, data.parse_mode)
+
     broadcast = create_broadcast(
         db,
         superadmin,
         BroadcastAudience(data.audience),
-        data.title,
-        data.message,
+        sanitized_title,
+        sanitized_message,
         data.image_url,
         data.cta_text,
         data.cta_url,
@@ -271,6 +326,7 @@ def create_broadcast_message(
 
 
 @router.post("/broadcasts/{broadcast_id}/retry-failed", response_model=BroadcastResponse)
+@rate_limit(max_requests=10, window_seconds=60)
 def retry_broadcast_failed(
     broadcast_id: int,
     db: Session = Depends(get_db),
@@ -304,7 +360,6 @@ def get_broadcast_recipients(
             "id": item.id,
             "user_id": item.user_id,
             "user_name": item.user.full_name,
-            "telegram_id": item.user.telegram_id,
             "status": item.status.value,
             "error": item.error,
             "attempt_count": item.attempt_count,
@@ -314,7 +369,8 @@ def get_broadcast_recipients(
         for item in recipients
     ]
 
-@router.post("/owners", response_model=UserResponse)
+@router.post("/owners", response_model=AdminUserResponse)
+@rate_limit(max_requests=20, window_seconds=60)
 def create_owner(
     owner_data: OwnerCreate,
     db: Session = Depends(get_db),
@@ -365,7 +421,8 @@ def create_owner(
     return owner
 
 
-@router.patch("/owners/{owner_id}", response_model=UserResponse)
+@router.patch("/owners/{owner_id}", response_model=AdminUserResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def update_owner(
     owner_id: int,
     owner_data: OwnerUpdate,
@@ -386,8 +443,10 @@ def update_owner(
                 raise HTTPException(status_code=400, detail=f"Bu {field} allaqachon ishlatilgan")
             setattr(owner, field, value)
     if owner_data.temporary_password:
-        owner.hashed_password = get_password_hash(owner_data.temporary_password)
-        owner.must_change_password = True
+        from app.core.security import verify_password
+        if not verify_password(owner_data.temporary_password, owner.hashed_password):
+            owner.hashed_password = get_password_hash(owner_data.temporary_password)
+            owner.must_change_password = True
 
     write_audit(db, "owner_updated", superadmin, "user", owner.id, owner_data.model_dump(exclude_none=True, exclude={"temporary_password"}))
     db.commit()
@@ -397,13 +456,16 @@ def update_owner(
 
 @router.get("/moderation/stadium-drafts", response_model=List[StadiumDraftResponse])
 def get_stadium_drafts(
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(StadiumDraft).order_by(StadiumDraft.created_at.desc()).all()
+    return db.query(StadiumDraft).order_by(StadiumDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/stadium-drafts/{draft_id}/approve", response_model=StadiumDraftResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def approve_stadium_draft(
     draft_id: int,
     review: ModerationReview | None = None,
@@ -433,7 +495,7 @@ def approve_stadium_draft(
     draft.status = ModerationStatus.approved
     draft.reviewed_by = superadmin.id
     draft.review_note = review.review_note if review else None
-    draft.reviewed_at = datetime.utcnow()
+    draft.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_stadium_draft_approved", user_id=superadmin.id, metadata={"draft_id": draft.id})
     write_audit(db, "stadium_draft_approved", superadmin, "stadium_draft", draft.id)
     db.commit()
@@ -442,6 +504,7 @@ def approve_stadium_draft(
 
 
 @router.post("/moderation/stadium-drafts/{draft_id}/reject", response_model=StadiumDraftResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def reject_stadium_draft(
     draft_id: int,
     review: ModerationReview,
@@ -456,7 +519,7 @@ def reject_stadium_draft(
     draft.status = ModerationStatus.rejected
     draft.reviewed_by = superadmin.id
     draft.review_note = review.review_note
-    draft.reviewed_at = datetime.utcnow()
+    draft.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_stadium_draft_rejected", user_id=superadmin.id, metadata={"draft_id": draft.id})
     write_audit(db, "stadium_draft_rejected", superadmin, "stadium_draft", draft.id, {"review_note": review.review_note})
     db.commit()
@@ -466,13 +529,16 @@ def reject_stadium_draft(
 
 @router.get("/moderation/image-drafts", response_model=List[ImageDraftResponse])
 def get_image_drafts(
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(StadiumImageDraft).order_by(StadiumImageDraft.created_at.desc()).all()
+    return db.query(StadiumImageDraft).order_by(StadiumImageDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/image-drafts/{draft_id}/approve", response_model=ImageDraftResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def approve_image_draft(
     draft_id: int,
     review: ModerationReview | None = None,
@@ -504,7 +570,7 @@ def approve_image_draft(
     draft.status = ModerationStatus.approved
     draft.reviewed_by = superadmin.id
     draft.review_note = review.review_note if review else None
-    draft.reviewed_at = datetime.utcnow()
+    draft.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_image_draft_approved", user_id=superadmin.id, metadata={"draft_id": draft.id})
     write_audit(db, "image_draft_approved", superadmin, "image_draft", draft.id)
     db.commit()
@@ -513,6 +579,7 @@ def approve_image_draft(
 
 
 @router.post("/moderation/image-drafts/{draft_id}/reject", response_model=ImageDraftResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def reject_image_draft(
     draft_id: int,
     review: ModerationReview,
@@ -527,7 +594,7 @@ def reject_image_draft(
     draft.status = ModerationStatus.rejected
     draft.reviewed_by = superadmin.id
     draft.review_note = review.review_note
-    draft.reviewed_at = datetime.utcnow()
+    draft.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_image_draft_rejected", user_id=superadmin.id, metadata={"draft_id": draft.id})
     write_audit(db, "image_draft_rejected", superadmin, "image_draft", draft.id, {"review_note": review.review_note})
     db.commit()
@@ -537,13 +604,16 @@ def reject_image_draft(
 
 @router.get("/moderation/cancel-requests", response_model=List[BookingCancelRequestResponse])
 def get_cancel_requests(
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(BookingCancelRequest).order_by(BookingCancelRequest.created_at.desc()).all()
+    return db.query(BookingCancelRequest).order_by(BookingCancelRequest.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/cancel-requests/{request_id}/approve", response_model=BookingCancelRequestResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def approve_cancel_request(
     request_id: int,
     review: ModerationReview | None = None,
@@ -562,7 +632,7 @@ def approve_cancel_request(
     request.status = ModerationStatus.approved
     request.reviewed_by = superadmin.id
     request.review_note = review.review_note if review else None
-    request.reviewed_at = datetime.utcnow()
+    request.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_cancel_request_approved", user_id=superadmin.id, metadata={"request_id": request.id, "booking_id": request.booking_id})
     write_audit(db, "cancel_request_approved", superadmin, "cancel_request", request.id, {"booking_id": request.booking_id})
     db.commit()
@@ -589,6 +659,7 @@ def approve_cancel_request(
 
 
 @router.post("/moderation/cancel-requests/{request_id}/reject", response_model=BookingCancelRequestResponse)
+@rate_limit(max_requests=30, window_seconds=60)
 def reject_cancel_request(
     request_id: int,
     review: ModerationReview,
@@ -603,7 +674,7 @@ def reject_cancel_request(
     request.status = ModerationStatus.rejected
     request.reviewed_by = superadmin.id
     request.review_note = review.review_note
-    request.reviewed_at = datetime.utcnow()
+    request.reviewed_at = datetime.now(timezone.utc)
     track_event(db, "superadmin_cancel_request_rejected", user_id=superadmin.id, metadata={"request_id": request.id, "booking_id": request.booking_id})
     write_audit(db, "cancel_request_rejected", superadmin, "cancel_request", request.id, {"booking_id": request.booking_id, "review_note": review.review_note})
     db.commit()
@@ -633,7 +704,7 @@ def _unique_slug(db: Session, name: str, current_stadium_id: int | None = None) 
     slug = generate_slug(name)
     base_slug = slug
     counter = 1
-    while True:
+    for _ in range(1000):
         query = db.query(Stadium).filter(Stadium.slug == slug)
         if current_stadium_id is not None:
             query = query.filter(Stadium.id != current_stadium_id)
@@ -641,7 +712,4 @@ def _unique_slug(db: Session, name: str, current_stadium_id: int | None = None) 
             return slug
         slug = f"{base_slug}-{counter}"
         counter += 1
-
-
-def _revenue_sum(query) -> int:
-    return int(query.with_entities(func.sum(Booking.total_price)).scalar() or 0)
+    return slug + "-" + str(int(datetime.now(timezone.utc).timestamp()))

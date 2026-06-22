@@ -74,7 +74,6 @@ class BroadcastRecipientResponse(BaseModel):
     id: int
     user_id: int
     user_name: str
-    telegram_id: str | None
     status: str
     error: str | None
     attempt_count: int

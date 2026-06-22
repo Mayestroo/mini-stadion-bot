@@ -11,7 +11,7 @@ export default function AdminOwnersPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState({ full_name: "", telegram_id: "", owner_login: "", temporary_password: "" });
   const [message, setMessage] = useState<{ tone: "green" | "red"; text: string } | null>(null);
-  const { data: owners = [], isLoading } = useQuery({ queryKey: ["admin-owners"], queryFn: superadminApi.getOwners });
+  const { data: owners = [], isLoading, isError } = useQuery({ queryKey: ["admin-owners"], queryFn: superadminApi.getOwners });
   const createMutation = useMutation({
     mutationFn: () => superadminApi.createOwner({
       full_name: form.full_name.trim(),
@@ -34,8 +34,9 @@ export default function AdminOwnersPage() {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (form.temporary_password.length < 6) {
-      setMessage({ tone: "red", text: "Vaqtinchalik parol kamida 6 ta belgidan iborat bo'lishi kerak" });
+    const pw = form.temporary_password;
+    if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/\d/.test(pw)) {
+      setMessage({ tone: "red", text: "Parol kamida 8 ta belgi, 1 ta katta/kichik harf va 1 ta raqam bo'lishi kerak" });
       return;
     }
     createMutation.mutate();
@@ -60,7 +61,7 @@ export default function AdminOwnersPage() {
           <AdminButton type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? "Yaratilmoqda..." : "Yaratish"}</AdminButton>
         </form>
         </AdminCard>
-        {isLoading ? <AdminLoading /> : owners.length === 0 ? <AdminEmptyState icon={<Users size={28} />} title="Ownerlar yo'q" text="Yaratilgan ownerlar shu ro'yxatda ko'rinadi." /> : <div className="mini-list">
+        {isLoading ? <AdminLoading /> : isError ? <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Ownerlarni yuklab bo'lmadi.</p></AdminCard> : owners.length === 0 ? <AdminEmptyState icon={<Users size={28} />} title="Ownerlar yo'q" text="Yaratilgan ownerlar shu ro'yxatda ko'rinadi." /> : <div className="mini-list">
           {owners.map((owner: User) => <AdminCard key={owner.id}><div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}><div className="mini-glyph" style={{ width: 42, height: 42 }}>{owner.full_name[0]}</div><div><b style={{ fontSize: 17 }}>{owner.full_name}</b><div style={{ color: "var(--mini-muted)", fontSize: 13 }}>Owner hisob</div></div></div><div className="mini-card-solid" style={{ padding: "2px 12px" }}><AdminInfoRow icon={<UserRound size={15} />} label="Login" value={owner.owner_login || "—"} /><AdminInfoRow icon={<IdCard size={15} />} label="Telegram ID" value={owner.telegram_id || "—"} last /></div></AdminCard>)}
         </div>}
     </AdminShell>

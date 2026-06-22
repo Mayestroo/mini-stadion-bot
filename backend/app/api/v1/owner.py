@@ -1,15 +1,21 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.v1.bookings import _booking_to_response
 from app.core.analytics import track_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_owner
-from app.core.notifications import notify_superadmins, notify_user
+from app.core.notifications import (
+    notify_admins,
+    notify_user,
+    get_notifications_for_user,
+    get_unread_count_for_user,
+    mark_all_read_for_user,
+    mark_notification_read_for_user,
+)
 from app.models.booking import Booking, BookingStatus
 from app.models.moderation import (
     BookingCancelRequest,
@@ -19,7 +25,6 @@ from app.models.moderation import (
     StadiumImageAction,
     StadiumImageDraft,
 )
-from app.models.notification import Notification
 from app.models.notification import NotificationType
 from app.models.stadium import Stadium
 from app.models.user import User
@@ -138,7 +143,7 @@ def create_stadium_draft(
         owner_id=owner.id,
         draft_type=StadiumDraftType.create,
         status=ModerationStatus.pending,
-        submitted_at=datetime.utcnow(),
+        submitted_at=datetime.now(timezone.utc),
         images=[],
     )
     db.add(draft)
@@ -163,7 +168,7 @@ def update_stadium_draft(
     for field, value in draft_data.model_dump(exclude_none=True).items():
         setattr(draft, field, value)
     draft.status = ModerationStatus.pending
-    draft.submitted_at = datetime.utcnow()
+    draft.submitted_at = datetime.now(timezone.utc)
     draft.review_note = None
     draft.reviewed_by = None
     draft.reviewed_at = None
@@ -184,7 +189,7 @@ def submit_stadium_draft(
     if draft.status == ModerationStatus.approved:
         raise HTTPException(status_code=400, detail="Tasdiqlangan draftni qayta yuborib bo'lmaydi")
     draft.status = ModerationStatus.pending
-    draft.submitted_at = datetime.utcnow()
+    draft.submitted_at = datetime.now(timezone.utc)
     draft.review_note = None
     db.commit()
     db.refresh(draft)
@@ -210,7 +215,7 @@ def create_update_draft(
         stadium_id=stadium.id,
         draft_type=StadiumDraftType.update,
         status=ModerationStatus.pending,
-        submitted_at=datetime.utcnow(),
+        submitted_at=datetime.now(timezone.utc),
     )
     db.add(draft)
     db.commit()
@@ -320,7 +325,7 @@ def request_booking_cancel(
     track_event(db, "owner_booking_cancel_requested", telegram_id=owner.telegram_id, user_id=owner.id, metadata={"booking_id": booking.id})
     db.commit()
     db.refresh(request)
-    notify_superadmins(
+    notify_admins(
         db,
         "⚠️ Bekor qilish so'rovi",
         f"Bron: {booking.booking_code}\n"
@@ -354,17 +359,7 @@ def get_owner_notifications(
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),
 ):
-    limit = min(max(limit, 1), 100)
-    query = db.query(Notification).filter(Notification.user_id == owner.id)
-    if type and type != "all":
-        query = query.filter(Notification.type == type)
-    if q:
-        pattern = f"%{q.strip()}%"
-        query = query.filter(or_(Notification.title.ilike(pattern), Notification.message.ilike(pattern)))
-    total_count = query.count()
-    notifications = query.order_by(Notification.created_at.desc()).offset(skip).limit(limit).all()
-    unread_count = db.query(Notification).filter(Notification.user_id == owner.id, Notification.is_read == False).count()
-    return {"unread_count": unread_count, "total_count": total_count, "notifications": notifications}
+    return get_notifications_for_user(db, owner.id, q, type, skip, limit)
 
 
 @router.get("/notifications/unread-count")
@@ -372,7 +367,7 @@ def get_owner_unread_notifications(
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),
 ):
-    return {"unread_count": db.query(Notification).filter(Notification.user_id == owner.id, Notification.is_read == False).count()}
+    return {"unread_count": get_unread_count_for_user(db, owner.id)}
 
 
 @router.patch("/notifications/read-all")
@@ -380,8 +375,7 @@ def mark_all_owner_notifications_read(
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),
 ):
-    db.query(Notification).filter(Notification.user_id == owner.id, Notification.is_read == False).update({"is_read": True})
-    db.commit()
+    mark_all_read_for_user(db, owner.id)
     return {"message": "Barcha xabarlar o'qildi"}
 
 
@@ -391,9 +385,7 @@ def mark_owner_notification_read(
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),
 ):
-    notification = db.query(Notification).filter(Notification.id == notification_id, Notification.user_id == owner.id).first()
+    notification = mark_notification_read_for_user(db, owner.id, notification_id)
     if not notification:
         raise HTTPException(status_code=404, detail="Xabar topilmadi")
-    notification.is_read = True
-    db.commit()
     return {"message": "Xabar o'qildi"}

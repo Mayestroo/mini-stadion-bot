@@ -1,8 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey
 from sqlalchemy.orm import relationship
-from datetime import datetime
 
-from app.core.database import Base
+from app.core.database import Base, utcnow
 
 
 class Stadium(Base):
@@ -50,8 +49,8 @@ class Stadium(Base):
     rating = Column(Float, default=0.0)
     total_bookings = Column(Integer, default=0)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     bookings = relationship("Booking", back_populates="stadium", lazy="dynamic")
     owner = relationship("User", back_populates="stadiums", foreign_keys=[owner_id])

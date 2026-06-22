@@ -5,11 +5,11 @@ from datetime import datetime, timedelta, timezone
 import re
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_admin, get_optional_user
+from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
 from app.models.stadium import Stadium
 from app.models.booking import Booking, BookingStatus
-from app.models.user import User
-from app.schemas.stadium import StadiumCreate, StadiumUpdate, StadiumResponse, AvailabilitySlot
+from app.models.user import User, UserRole
+from app.schemas.stadium import ALLOWED_STADIUM_FIELDS, StadiumCreate, StadiumUpdate, StadiumResponse, AvailabilitySlot
 
 router = APIRouter(prefix="/stadiums", tags=["Stadiums"])
 
@@ -82,7 +82,7 @@ def get_availability(
         Booking.status.in_([BookingStatus.confirmed, BookingStatus.pending]),
     ).all()
 
-    booked_ranges = [(b.start_time, b.end_time, b.id) for b in bookings]
+    booked_ranges = [(b.start_time, b.end_time) for b in bookings]
 
     slots = []
     open_h, open_m = map(int, stadium.open_time.split(":"))
@@ -90,20 +90,17 @@ def get_availability(
 
     for hour in range(open_h, close_h):
         slot_time = f"{hour:02d}:00"
-        slot_end = f"{hour+1:02d}:00"
         available = True
-        booking_id = None
 
         if not slot_has_minimum_lead_time(date, slot_time):
             available = False
 
-        for start, end, bid in booked_ranges:
+        for start, end in booked_ranges:
             if start <= slot_time < end:
                 available = False
-                booking_id = bid
                 break
 
-        slots.append(AvailabilitySlot(time=slot_time, available=available, booking_id=booking_id))
+        slots.append(AvailabilitySlot(time=slot_time, available=available))
 
     return {"date": date, "stadium_id": stadium_id, "slots": slots}
 
@@ -120,7 +117,7 @@ def get_stadium(slug: str, db: Session = Depends(get_db)):
 def create_stadium(
     stadium_data: StadiumCreate,
     db: Session = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_superadmin),
 ):
     slug = generate_slug(stadium_data.name)
     base_slug = slug
@@ -129,7 +126,7 @@ def create_stadium(
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    stadium = Stadium(**stadium_data.model_dump(), slug=slug)
+    stadium = Stadium(**{k: v for k, v in stadium_data.model_dump().items() if k in ALLOWED_STADIUM_FIELDS}, slug=slug, owner_id=admin.id)
     db.add(stadium)
     db.commit()
     db.refresh(stadium)
@@ -146,9 +143,20 @@ def update_stadium(
     stadium = db.query(Stadium).filter(Stadium.id == stadium_id).first()
     if not stadium:
         raise HTTPException(status_code=404, detail="Stadion topilmadi")
+    if admin.role != UserRole.superadmin and stadium.owner_id != admin.id:
+        raise HTTPException(status_code=403, detail="Faqat o'z stadioningizni tahrirlashingiz mumkin")
 
-    for field, value in stadium_data.model_dump(exclude_none=True).items():
-        setattr(stadium, field, value)
+    ALLOWED_UPDATE_FIELDS = {
+        "name", "description", "address", "district", "latitude", "longitude",
+        "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
+        "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",
+        "has_parking", "has_cafe", "has_tribunes", "open_time", "close_time", "working_days",
+        "cover_image", "images",
+    }
+    update_data = stadium_data.model_dump(exclude_none=True)
+    for field, value in update_data.items():
+        if field in ALLOWED_UPDATE_FIELDS:
+            setattr(stadium, field, value)
 
     db.commit()
     db.refresh(stadium)
@@ -164,6 +172,8 @@ def delete_stadium(
     stadium = db.query(Stadium).filter(Stadium.id == stadium_id).first()
     if not stadium:
         raise HTTPException(status_code=404, detail="Stadion topilmadi")
+    if admin.role != UserRole.superadmin and stadium.owner_id != admin.id:
+        raise HTTPException(status_code=403, detail="Faqat o'z stadioningizni o'chirishingiz mumkin")
     stadium.is_active = False
     db.commit()
     return {"message": "Stadion o'chirildi"}

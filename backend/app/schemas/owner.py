@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import List, Optional
 
+import re
 from pydantic import BaseModel, field_validator
 
 from app.schemas.stadium import StadiumCreate
-from app.schemas.user import UserResponse
+from app.schemas.user import PrivateUserResponse, UserResponse
 
 
 class OwnerLogin(BaseModel):
@@ -19,8 +20,14 @@ class OwnerChangePassword(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_new_password(cls, value):
-        if len(value) < 6:
-            raise ValueError("Yangi parol kamida 6 ta belgidan iborat bo'lishi kerak")
+        if len(value) < 8:
+            raise ValueError("Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Parolda kamida bitta kichik harf bo'lishi kerak")
+        if not re.search(r"\d", value):
+            raise ValueError("Parolda kamida bitta raqam bo'lishi kerak")
         return value
 
 
@@ -34,8 +41,14 @@ class OwnerCreate(BaseModel):
     @field_validator("temporary_password")
     @classmethod
     def validate_temporary_password(cls, value):
-        if len(value) < 6:
-            raise ValueError("Vaqtinchalik parol kamida 6 ta belgidan iborat bo'lishi kerak")
+        if len(value) < 8:
+            raise ValueError("Vaqtinchalik parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if not re.search(r"[A-Z]", value):
+            raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
+        if not re.search(r"[a-z]", value):
+            raise ValueError("Parolda kamida bitta kichik harf bo'lishi kerak")
+        if not re.search(r"\d", value):
+            raise ValueError("Parolda kamida bitta raqam bo'lishi kerak")
         return value
 
 
@@ -49,7 +62,7 @@ class OwnerUpdate(BaseModel):
 
 
 class OwnerMe(BaseModel):
-    user: UserResponse
+    user: PrivateUserResponse
     must_change_password: bool
 
 
@@ -178,6 +191,15 @@ class BookingCancelRequestCreate(BaseModel):
 
 class ModerationReview(BaseModel):
     review_note: Optional[str] = None
+
+    @field_validator("review_note")
+    @classmethod
+    def limit_review_note(cls, v):
+        if v is not None:
+            v = v.strip()[:500]
+            if not v:
+                return None
+        return v
 
 
 class BookingCancelRequestResponse(BaseModel):

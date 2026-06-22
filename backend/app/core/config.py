@@ -3,9 +3,9 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+psycopg://andijan:andijan@localhost:5432/andijan_futbol"
+    DATABASE_URL: str = "postgresql+psycopg://andijan:andijan@localhost:5432/maydoncha"
 
-    SECRET_KEY: str = "change-this-secret-key"
+    SECRET_KEY: str = "change-this-secret-key-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200
 
@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     BOT_API_SECRET: str = "change-this-bot-secret"
     ADMIN_TELEGRAM_IDS: str = ""
 
+    CONTACT_WEBSITE: str = "maydoncha.uz"
+    CONTACT_TELEGRAM: str = "@maydoncha_bot"
+
     @property
     def allowed_origins_list(self) -> List[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
@@ -33,6 +36,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()

@@ -24,6 +24,7 @@ interface TelegramContextType {
   close: () => void;
   showAlert: (msg: string) => void;
   requestContact: () => Promise<TelegramContact | null>;
+  initData: string;
 }
 
 const TelegramContext = createContext<TelegramContextType>({
@@ -33,6 +34,7 @@ const TelegramContext = createContext<TelegramContextType>({
   close: () => {},
   showAlert: () => {},
   requestContact: async () => null,
+  initData: "",
 });
 
 export function useTelegram() {
@@ -42,18 +44,43 @@ export function useTelegram() {
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [tg, setTg] = useState<any>(null);
+  const [initData, setInitData] = useState("");
+  const [user, setUser] = useState<TelegramUser | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const webapp = (window as any).Telegram?.WebApp;
-    if (webapp) {
-      webapp.ready();
-      setTg(webapp);
+    let cancelled = false;
+    let attempts = 0;
+
+    const readWebApp = () => {
+      if (cancelled) return;
+
+      const webapp = (window as any).Telegram?.WebApp;
+      if (!webapp && attempts < 30) {
+        attempts += 1;
+        window.setTimeout(readWebApp, 100);
+        return;
+      }
+
+      if (webapp) {
+        webapp.ready();
+        webapp.expand?.();
+        setTg(webapp);
+        setInitData(webapp.initData || "");
+        setUser(webapp.initDataUnsafe?.user || null);
+        setTheme(webapp.colorScheme || "light");
+        document.documentElement.style.setProperty("--tg-safe-area-top", `${webapp.safeAreaInset?.top || 0}px`);
+        document.documentElement.style.setProperty("--tg-safe-area-bottom", `${webapp.safeAreaInset?.bottom || 0}px`);
+      }
+
       setReady(true);
-    } else {
-      setReady(true);
-    }
-    document.documentElement.style.setProperty("--tg-safe-area-top", webapp?.safeAreaInset?.top + "px" || "0px");
-    document.documentElement.style.setProperty("--tg-safe-area-bottom", webapp?.safeAreaInset?.bottom + "px" || "0px");
+    };
+
+    readWebApp();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const requestContact = useCallback(async () => {
@@ -69,7 +96,6 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     }
   }, [tg]);
 
-  const tgUser = tg?.initDataUnsafe?.user || null;
   const urlUser = (() => {
     if (typeof window === "undefined") return null;
     const p = new URLSearchParams(window.location.search);
@@ -84,12 +110,13 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   })();
 
   const value: TelegramContextType = {
-    user: tgUser || urlUser,
-    theme: tg?.colorScheme || "light",
+    user: user || urlUser,
+    theme,
     ready,
     close: () => tg?.close(),
     showAlert: (msg: string) => tg?.showAlert(msg),
     requestContact,
+    initData,
   };
 
   return (

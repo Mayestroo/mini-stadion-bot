@@ -8,10 +8,13 @@ import { AdminCard, AdminEmptyState, AdminLoading, AdminShell } from "@/componen
 import { BarChart3 } from "lucide-react";
 
 export default function AdminStatisticsPage() {
-  const { data, isLoading } = useQuery<AdminStatistics>({ queryKey: ["admin-statistics"], queryFn: superadminApi.getStatistics });
+  const { data, isLoading, isError } = useQuery<AdminStatistics>({ queryKey: ["admin-statistics"], queryFn: superadminApi.getStatistics });
 
   if (isLoading || !data) {
     return <AdminShell title="Statistika"><AdminLoading /></AdminShell>;
+  }
+  if (isError) {
+    return <AdminShell title="Statistika"><AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Statistikani yuklab bo'lmadi.</p></AdminCard></AdminShell>;
   }
 
   const kpis = [

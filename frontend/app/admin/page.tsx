@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth";
 import { AdminCard, AdminShell } from "@/components/admin/AdminShell";
-import { BarChart3, CalendarDays, ClipboardCheck, ShieldCheck, Sparkles, UserRound, Users, Warehouse } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, UserRound, Users, Warehouse } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -38,6 +38,7 @@ export default function AdminDashboard() {
 
           <div className="mini-card-solid" style={{ padding: "8px 16px" }}>
             <InfoRow icon={<UserRound size={16} />} label="Hisob" value={user.phone || "Telefon ulanmagan"} />
+            {user.telegram_id ? <InfoRow icon={<MessageCircle size={16} />} label="Telegram ID" value={user.telegram_id} /> : null}
             <InfoRow icon={<ShieldCheck size={16} />} label="Rol" value={roleLabel} last />
           </div>
 

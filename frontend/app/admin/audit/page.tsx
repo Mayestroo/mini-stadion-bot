@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollText } from "lucide-react";
 import { AdminCard, AdminEmptyState, AdminInput, AdminShell } from "@/components/admin/AdminShell";
 import { superadminApi } from "@/lib/api";
@@ -18,20 +18,27 @@ type AuditLog = {
 export default function AdminAuditPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [action, setAction] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
-    setLoading(true);
-    superadminApi.getAuditLogs({
-      q: q || undefined,
-      action: action || undefined,
-      date_from: dateFrom || undefined,
-      date_to: dateTo || undefined,
-      limit: 100,
-    }).then(setLogs).finally(() => setLoading(false));
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setLoading(true);
+      setError("");
+      superadminApi.getAuditLogs({
+        q: q || undefined,
+        action: action || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        limit: 100,
+      }).then(setLogs).catch(() => setError("Xatolik yuz berdi")).finally(() => setLoading(false));
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [q, action, dateFrom, dateTo]);
 
   return (
@@ -44,7 +51,7 @@ export default function AdminAuditPage() {
           <AdminInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         </div>
       </AdminCard>
-      {loading ? <AdminCard>Yuklanmoqda...</AdminCard> : logs.length === 0 ? (
+      {loading ? <AdminCard>Yuklanmoqda...</AdminCard> : error ? <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard> : logs.length === 0 ? (
         <AdminEmptyState icon={<ScrollText size={26} />} title="Audit log bo'sh" text="Actionlar shu yerda ko'rinadi." />
       ) : (
         <div style={{ display: "grid", gap: 10 }}>

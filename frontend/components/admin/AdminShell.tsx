@@ -1,9 +1,46 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
-import { CalendarDays, LogOut, Menu, ShieldCheck, Warehouse } from "lucide-react";
+import { AlertTriangle, CalendarDays, LogOut, Menu, ShieldCheck, Warehouse } from "lucide-react";
+
+
+export class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: Error }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="mini-app" style={{ maxWidth: 480, margin: "0 auto" }}>
+          <main className="mini-page">
+            <section className="mini-card" style={{ padding: 16, textAlign: "center" }}>
+              <div className="mini-glyph mini-glyph-muted" style={{ width: 58, height: 58, borderRadius: 22, margin: "0 auto 14px" }}>
+                <AlertTriangle size={28} />
+              </div>
+              <h2 style={{ color: "var(--mini-text)", fontSize: 20, marginBottom: 6 }}>Xatolik yuz berdi</h2>
+              <p style={{ fontSize: 14, lineHeight: 1.4, color: "var(--mini-muted)", marginBottom: 16 }}>
+                {this.state.error?.message || "Sahifani qayta yuklashni urinib ko'ring"}
+              </p>
+              <button onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+                className="mini-pressable"
+                style={{ border: 0, borderRadius: 17, padding: "12px 15px", background: "linear-gradient(180deg, #38d46a 0%, #30b95b 100%)", color: "white", fontSize: 14, fontWeight: 750, cursor: "pointer" }}>
+                Qayta yuklash
+              </button>
+            </section>
+          </main>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const baseItems = [
   { href: "/admin", label: "Panel", icon: ShieldCheck },

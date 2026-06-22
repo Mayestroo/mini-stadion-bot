@@ -5,6 +5,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   headers: { "Content-Type": "application/json" },
+  timeout: 15000,
 });
 
 api.interceptors.request.use((config) => {
@@ -78,8 +79,8 @@ export const stadiumApi = {
   },
 };
 
-export const authTelegram = (data: { telegram_id: string; username: string; full_name: string; phone?: string }) =>
-  api.post("/auth/telegram-auth", undefined, { params: data }).then((r) => r.data);
+export const authTelegram = (data: { init_data: string; phone?: string }) =>
+  api.post("/auth/telegram-auth", data).then((r) => r.data);
 
 export const updateProfile = (data: { phone?: string; full_name?: string }) =>
   api.put("/auth/me", data).then((r) => r.data);

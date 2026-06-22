@@ -1,6 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
+
+ALLOWED_STADIUM_FIELDS = {
+    "name", "description", "address", "district", "latitude", "longitude",
+    "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
+    "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",
+    "has_parking", "has_cafe", "has_tribunes", "open_time", "close_time", "working_days",
+}
 
 
 class StadiumCreate(BaseModel):
@@ -29,12 +36,56 @@ class StadiumCreate(BaseModel):
     close_time: str = "23:00"
     working_days: List[int] = [0, 1, 2, 3, 4, 5, 6]
 
+    @field_validator("name", "address", "phone")
+    @classmethod
+    def strip_and_limit(cls, v):
+        if not isinstance(v, str):
+            return v
+        v = v.strip()[:200]
+        if not v:
+            raise ValueError("Maydon bo'sh bo'lmasligi kerak")
+        return v
 
-class StadiumUpdate(StadiumCreate):
+    @field_validator("description")
+    @classmethod
+    def limit_description(cls, v):
+        if v is not None:
+            return v.strip()[:2000]
+        return v
+
+
+class StadiumUpdate(BaseModel):
     name: Optional[str] = None
+    description: Optional[str] = None
     address: Optional[str] = None
+    district: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     phone: Optional[str] = None
+    phone2: Optional[str] = None
+    telegram: Optional[str] = None
     price_per_hour: Optional[int] = None
+    price_weekend: Optional[int] = None
+    price_night: Optional[int] = None
+    width: Optional[float] = None
+    length: Optional[float] = None
+    surface: Optional[str] = None
+    has_lighting: Optional[bool] = None
+    has_changing_room: Optional[bool] = None
+    has_shower: Optional[bool] = None
+    has_parking: Optional[bool] = None
+    has_cafe: Optional[bool] = None
+    has_tribunes: Optional[bool] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    working_days: Optional[List[int]] = None
+
+    @field_validator("name", "address", "phone")
+    @classmethod
+    def strip_and_limit(cls, v):
+        if v is not None:
+            return v.strip()[:200]
+        return v
 
 
 class StadiumResponse(BaseModel):
@@ -79,4 +130,3 @@ class StadiumResponse(BaseModel):
 class AvailabilitySlot(BaseModel):
     time: str
     available: bool
-    booking_id: Optional[int] = None

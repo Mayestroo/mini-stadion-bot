@@ -1,26 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-import random
-import string
+from typing import List, Optional
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from app.core.database import get_db
 from app.core.analytics import track_event
 from app.core.dependencies import get_current_user, get_current_admin
-from app.core.notifications import notify_user, notify_superadmins
+from app.core.notifications import notify_user, notify_admins
 from app.core.telegram import send_booking_action_message
 from app.models.booking import Booking, BookingStatus
 from app.models.notification import NotificationType
 from app.models.stadium import Stadium
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.booking import BookingCreate, BookingStatusUpdate, BookingResponse
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
 def generate_booking_code() -> str:
-    return "AF-" + "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    return "AF-" + "".join(secrets.choice(alphabet) for _ in range(8))
 
 
 def calculate_price(stadium: Stadium, start_time: str, end_time: str, date: str) -> tuple[int, int]:
@@ -142,7 +143,7 @@ def get_my_bookings(
 def get_all_bookings(
     skip: int = 0,
     limit: int = 50,
-    status: str = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
@@ -184,7 +185,7 @@ def get_booking(
     booking = db.query(Booking).filter(Booking.booking_code == booking_code).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Bron topilmadi")
-    if booking.user_id != current_user.id and current_user.role not in ("moderator", "superadmin"):
+    if booking.user_id != current_user.id and current_user.role not in (UserRole.moderator, UserRole.superadmin):
         raise HTTPException(status_code=403, detail="Ruxsat yo'q")
     return _booking_to_response(booking)
 
@@ -207,7 +208,7 @@ def cancel_booking(
     track_event(db, "booking_cancelled_by_user", telegram_id=current_user.telegram_id, user_id=current_user.id, metadata={"booking_id": booking.id})
     db.commit()
     db.refresh(booking)
-    notify_superadmins(
+    notify_admins(
         db,
         "❌ Bron bekor qilindi",
         f"{_booking_summary(booking)}\nFoydalanuvchi: {booking.user.full_name}",
@@ -235,7 +236,7 @@ def _notify_new_booking(db: Session, booking: Booking) -> None:
     )
     if booking.note:
         message += f"\nIzoh: {booking.note}"
-    notify_superadmins(db, "🆕 Yangi bron", message, NotificationType.booking)
+    notify_admins(db, "🆕 Yangi bron", message, NotificationType.booking)
     notify_user(db, booking.stadium.owner, "🆕 Yangi bron", message, NotificationType.booking, telegram=False)
     if booking.stadium.owner:
         send_booking_action_message(booking.stadium.owner.telegram_id, "🆕 Yangi bron", message, booking.id)

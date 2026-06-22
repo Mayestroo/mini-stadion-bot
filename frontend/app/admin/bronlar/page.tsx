@@ -7,7 +7,7 @@ import { CalendarCheck, ClipboardList, Clock3, Phone } from "lucide-react";
 
 export default function AdminBookings() {
   const queryClient = useQueryClient();
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading, isError } = useQuery({
     queryKey: ["admin-bookings"],
     queryFn: () => bookingApi.getAllAdmin({ limit: 50 }),
   });
@@ -21,6 +21,8 @@ export default function AdminBookings() {
     <AdminShell title="Bronlar" subtitle="Bronlarni tasdiqlash va statuslarini boshqarish">
         {isLoading ? (
           <AdminLoading />
+        ) : isError ? (
+          <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Bronlarni yuklab bo'lmadi.</p></AdminCard>
         ) : bookings.length === 0 ? (
           <AdminEmptyState icon={<ClipboardList size={28} />} title="Bronlar yo'q" text="Yangi bronlar yaratilganda shu yerda ko'rinadi." />
         ) : (

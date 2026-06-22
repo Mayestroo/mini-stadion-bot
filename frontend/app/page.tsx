@@ -35,7 +35,7 @@ export default function HomePage() {
               letterSpacing: "0.05em",
             }}
           >
-            ⚡ ANDIJAN · MINI FUTBOL
+            ⚡ MAYDONCHA · MINI FUTBOL
           </div>
 
           <h1
@@ -83,7 +83,7 @@ export default function HomePage() {
               Stadionlarni ko'rish
             </Link>
             <a
-              href="https://t.me/andijanfutbol_bot"
+              href="https://t.me/maydoncha_bot"
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -142,11 +142,11 @@ export default function HomePage() {
       <footer style={{ backgroundColor: "var(--color-text-primary)", color: "white", padding: "40px 20px", marginTop: 40 }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>⚽ Andijan Futbol</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>© 2025 Andijan Futbol. Barcha huquqlar himoyalangan.</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>⚽ Maydoncha</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>© 2025 Maydoncha. Barcha huquqlar himoyalangan.</div>
           </div>
           <div style={{ display: "flex", gap: 24 }}>
-            <a href="https://t.me/andijanfutbol_bot" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none", fontSize: 14 }}>Telegram Bot</a>
+            <a href="https://t.me/maydoncha_bot" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none", fontSize: 14 }}>Telegram Bot</a>
             <Link href="/stadionlar" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none", fontSize: 14 }}>Stadionlar</Link>
             <Link href="/admin" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none", fontSize: 14 }}>Admin</Link>
           </div>

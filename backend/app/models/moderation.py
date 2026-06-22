@@ -1,10 +1,9 @@
-from datetime import datetime
 import enum
 
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from app.core.database import Base, utcnow
 
 
 class ModerationStatus(str, enum.Enum):
@@ -69,8 +68,8 @@ class StadiumDraft(Base):
 
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     review_note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     submitted_at = Column(DateTime, nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
 
@@ -91,7 +90,7 @@ class StadiumImageDraft(Base):
 
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     review_note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 
     owner = relationship("User", back_populates="image_drafts", foreign_keys=[owner_id])
@@ -110,7 +109,7 @@ class BookingCancelRequest(Base):
 
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     review_note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
     reviewed_at = Column(DateTime, nullable=True)
 
     booking = relationship("Booking", back_populates="cancel_requests")

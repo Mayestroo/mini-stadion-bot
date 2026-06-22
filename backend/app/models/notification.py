@@ -1,10 +1,9 @@
-from datetime import datetime
 import enum
 
 from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from app.core.database import Base
+from app.core.database import Base, utcnow
 
 
 class NotificationType(str, enum.Enum):
@@ -44,7 +43,7 @@ class Notification(Base):
     message = Column(Text, nullable=False)
     type = Column(Enum(NotificationType), default=NotificationType.system, nullable=False, index=True)
     is_read = Column(Boolean, default=False, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     user = relationship("User", back_populates="notifications")
 
@@ -66,8 +65,8 @@ class Broadcast(Base):
     total_count = Column(Integer, default=0, nullable=False)
     sent_count = Column(Integer, default=0, nullable=False)
     failed_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
 
     creator = relationship("User", foreign_keys=[created_by])
     stadium = relationship("Stadium")
@@ -86,7 +85,7 @@ class BroadcastRecipient(Base):
     locked_at = Column(DateTime, nullable=True, index=True)
     last_attempt_at = Column(DateTime, nullable=True)
     sent_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     broadcast = relationship("Broadcast", back_populates="recipients")
     user = relationship("User")

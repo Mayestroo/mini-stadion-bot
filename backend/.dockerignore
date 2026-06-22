@@ -1,7 +1,16 @@
 __pycache__
 *.py[cod]
+*.pyo
 .pytest_cache
 .env
+.env.*
 uploads
 Dockerfile
 .dockerignore
+.git
+.gitignore
+README.md
+tests/
+migrations/versions/*.pyc
+*.db
+*.db-journal
