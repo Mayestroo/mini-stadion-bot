@@ -526,9 +526,9 @@ body {
   right: max(18px, calc((100vw - 480px) / 2 + 18px));
   bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   z-index: 102;
-  width: min(246px, calc(100% - 36px));
-  padding: 8px;
-  border-radius: 24px;
+  width: min(206px, calc(100% - 36px));
+  padding: 6px;
+  border-radius: 20px;
   background: linear-gradient(180deg, rgba(31,31,33,0.96), rgba(22,22,24,0.94));
   border: 1px solid rgba(255,255,255,0.12);
   box-shadow: 0 24px 58px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.08);
@@ -553,19 +553,19 @@ body {
 .mini-more-item {
   width: 100%;
   border: 0;
-  border-radius: 18px;
+  border-radius: 14px;
   background: transparent;
   color: rgba(255,255,255,0.92);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 54px;
-  padding: 14px 16px;
-  font-size: 17px;
+  gap: 12px;
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: 14px;
   line-height: 1;
-  font-weight: 850;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 

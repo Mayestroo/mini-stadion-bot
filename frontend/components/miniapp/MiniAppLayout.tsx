@@ -70,7 +70,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
                       role="menuitem"
                     >
                       <span>{item.label}</span>
-                      <Icon size={21} strokeWidth={active ? 2.7 : 2.3} />
+                      <Icon size={18} strokeWidth={active ? 2.5 : 2.1} />
                     </button>
                   );
                 })}
@@ -81,7 +81,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
                   role="menuitem"
                 >
                   <span>Chiqish</span>
-                  <LogOut size={21} strokeWidth={2.3} />
+                  <LogOut size={18} strokeWidth={2.1} />
                 </button>
               </div>
             </>
