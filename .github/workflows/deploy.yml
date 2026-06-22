@@ -1,0 +1,52 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          test -n "$VPS_HOST"
+          test -n "$VPS_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/maydoncha_deploy_key
+          chmod 600 ~/.ssh/maydoncha_deploy_key
+          ssh-keyscan -p "${VPS_PORT:-22}" "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/maydoncha_deploy_key -p "${VPS_PORT:-22}" "${VPS_USER:-root}@$VPS_HOST" 'bash -se' <<'REMOTE'
+          set -euo pipefail
+
+          cd /srv/maydoncha
+          git fetch origin main
+          git reset --hard origin/main
+
+          docker compose -p maydoncha -f docker-compose.prod.yml build
+          docker compose -p maydoncha -f docker-compose.prod.yml up -d
+
+          cp /srv/maydoncha/deploy/nginx-pentestlab.conf /srv/ielts/deploy/vps/nginx/conf.d/maydoncha-pentestlab.conf
+          docker exec ielts-nginx nginx -t
+          docker exec ielts-nginx nginx -s reload
+
+          curl -fsS https://api.pentestlab.uz >/dev/null
+          curl -fsS https://pentestlab.uz/miniapp >/dev/null
+          docker compose -p maydoncha -f docker-compose.prod.yml ps
+          REMOTE
