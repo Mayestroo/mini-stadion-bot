@@ -333,6 +333,12 @@ body {
   gap: 10px;
 }
 
+.mini-home-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .mini-responsive-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -83,7 +83,7 @@ export default function MiniAppHome() {
         </div>
       )}
 
-      <div className="mini-responsive-grid-2" style={{ marginBottom: 22 }}>
+      <div className="mini-home-actions" style={{ marginBottom: 22 }}>
         <ActionCard icon={<MapPinned size={22} />} title="Stadionlar" subtitle="Yaqindagilar" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
         <ActionCard icon={<CalendarCheck size={22} />} title="Bronlarim" subtitle="Rejalar" onClick={() => router.push("/miniapp/bookings")} tone="blue" />
       </div>
