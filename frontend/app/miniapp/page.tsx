@@ -83,7 +83,7 @@ export default function MiniAppHome() {
         </div>
       )}
 
-      <div className="mini-home-actions" style={{ marginBottom: 22 }}>
+      <div className="mini-home-actions" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 22 }}>
         <ActionCard icon={<MapPinned size={22} />} title="Stadionlar" subtitle="Yaqindagilar" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
         <ActionCard icon={<CalendarCheck size={22} />} title="Bronlarim" subtitle="Rejalar" onClick={() => router.push("/miniapp/bookings")} tone="blue" />
       </div>
@@ -107,7 +107,7 @@ export default function MiniAppHome() {
 
 function ActionCard({ icon, title, subtitle, onClick, tone }: { icon: React.ReactNode; title: string; subtitle: string; onClick: () => void; tone: "green" | "blue" }) {
   return (
-    <button onClick={onClick} className="mini-card-solid mini-pressable" style={{ border: 0, cursor: "pointer", padding: 15, textAlign: "left", color: "var(--mini-text)" }}>
+    <button onClick={onClick} className="mini-card-solid mini-pressable" style={{ width: "100%", minWidth: 0, border: 0, cursor: "pointer", padding: 15, textAlign: "left", color: "var(--mini-text)" }}>
       <div className={`mini-glyph ${tone === "blue" ? "mini-glyph-blue" : ""}`} style={{ marginBottom: 12 }}>
         {icon}
       </div>
