@@ -42,13 +42,31 @@ jobs:
           docker compose -p sportly -f docker-compose.prod.yml build
           docker compose -p sportly -f docker-compose.prod.yml up -d
 
-          sleep 10
+          # Wait for containers to become healthy
+          echo "Waiting for services to start..."
 
+          # Copy nginx config and reload
           cp /srv/sportly/deploy/nginx-pentestlab.conf /srv/ielts/deploy/vps/nginx/conf.d/sportly-pentestlab.conf
           docker exec ielts-nginx nginx -t
           docker exec ielts-nginx nginx -s reload
 
-          curl -fsS https://api.pentestlab.uz >/dev/null
-          curl -fsS https://pentestlab.uz/miniapp >/dev/null
+          # Health check with retries (up to 60 seconds per endpoint)
+          for url in https://api.pentestlab.uz https://pentestlab.uz/miniapp; do
+            echo "Checking $url ..."
+            for i in $(seq 1 12); do
+              if curl -fsS --max-time 5 "$url" >/dev/null 2>&1; then
+                echo "  ✓ $url is up"
+                break
+              fi
+              if [ "$i" -eq 12 ]; then
+                echo "  ✗ $url failed after 60s"
+                docker compose -p sportly -f docker-compose.prod.yml logs --tail=50
+                exit 1
+              fi
+              echo "  attempt $i/12 failed, retrying in 5s..."
+              sleep 5
+            done
+          done
+
           docker compose -p sportly -f docker-compose.prod.yml ps
           REMOTE
