@@ -19,12 +19,20 @@ const moreItems = [
 export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, ready, close } = useTelegram();
-  const { isAuthenticated, logout } = useAuthStore();
+  const { theme, ready, close, user: tgUser } = useTelegram();
+  const { isAuthenticated, hydrated, user: storedUser, logout } = useAuthStore();
   const [unreadCount, setUnreadCount] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const hideTabbar = pathname.startsWith("/miniapp/stadiums/");
   const moreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+
+  useEffect(() => {
+    if (!hydrated || !ready) return;
+    if (!isAuthenticated || !storedUser || !tgUser) return;
+    if (String(tgUser.id) !== storedUser.telegram_id) {
+      logout();
+    }
+  }, [hydrated, ready, isAuthenticated, storedUser, tgUser, logout]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
