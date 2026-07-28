@@ -49,6 +49,9 @@ export const authApi = {
 
   ownerChangePassword: (data: { current_password: string; new_password: string }) =>
     api.post("/auth/owner-change-password", data).then((r) => r.data),
+
+  getMe: () =>
+    api.get("/auth/me").then((r) => r.data),
 };
 
 export const stadiumApi = {

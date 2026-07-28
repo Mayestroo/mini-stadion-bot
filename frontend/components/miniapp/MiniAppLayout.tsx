@@ -3,7 +3,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTelegram } from "./TelegramProvider";
 import { Bell, CalendarCheck, CircleUserRound, LogOut, MapPinned, Menu } from "lucide-react";
-import { notificationApi } from "@/lib/api";
+import { notificationApi, authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
 const tabs = [
@@ -20,7 +20,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, ready, close, user: tgUser } = useTelegram();
-  const { isAuthenticated, hydrated, user: storedUser, logout } = useAuthStore();
+  const { isAuthenticated, hydrated, user: storedUser, logout, setUser } = useAuthStore();
   const [unreadCount, setUnreadCount] = useState(0);
   const [moreOpen, setMoreOpen] = useState(false);
   const hideTabbar = pathname.startsWith("/miniapp/stadiums/");
@@ -33,6 +33,13 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
       logout();
     }
   }, [hydrated, ready, isAuthenticated, storedUser, tgUser, logout]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    authApi.getMe().then((freshUser) => {
+      if (freshUser) setUser(freshUser);
+    }).catch(() => {});
+  }, [isAuthenticated, setUser]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
