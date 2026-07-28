@@ -71,7 +71,8 @@ export default function BookingPage() {
     <>
       <Header />
       <main style={{ maxWidth: 700, margin: "0 auto", padding: "32px 20px" }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Bron qilish</h1>
+        {stadiums.length === 0 && !loading ? <div className="mini-loader"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : null}
+        {stadiums.length > 0 && <><h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Bron qilish</h1>
 
         {step === "stadium" && (
           <div>

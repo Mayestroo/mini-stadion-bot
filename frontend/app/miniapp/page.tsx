@@ -24,10 +24,9 @@ export default function MiniAppHome() {
 
   if (!ready || !hydrated) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: textSec }}>
-        <div style={{ width: 40, height: 40, borderRadius: 20, border: "3px solid var(--mini-green)", borderTopColor: "transparent", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
-        <p>Yuklanmoqda...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="mini-loader">
+        <div className="mini-loader-spinner" />
+        <div>Yuklanmoqda...</div>
       </div>
     );
   }

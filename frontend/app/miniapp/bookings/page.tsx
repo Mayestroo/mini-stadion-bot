@@ -16,7 +16,7 @@ export default function MiniBookingsPage() {
   const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";
 
   if (isLoading) {
-    return <div style={{ padding: 40, textAlign: "center", color: textSec }}>Yuklanmoqda...</div>;
+    return <div className="mini-loader"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>;
   }
 
   return (

@@ -22,7 +22,7 @@ export default function OwnerBookingsPage() {
     <OwnerShell>
       <div style={{ display: "grid", gap: 10 }}>
         <OwnerCard><h2 style={{ fontSize: 25, fontWeight: 950, letterSpacing: "-0.04em" }}>Bronlar</h2><p style={{ color: "#627064", marginTop: 4 }}>Pending bronlarni tasdiqlang yoki bekor qilishga so'rov yuboring.</p></OwnerCard>
-        {isLoading ? <OwnerCard>Yuklanmoqda...</OwnerCard> : bookings.map((booking: Booking) => (
+        {isLoading ? <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : bookings.map((booking: Booking) => (
           <OwnerCard key={booking.id}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div><b>{booking.stadium_name}</b><div style={{ color: "#627064", fontSize: 13 }}>{booking.user_name} · {booking.user_phone || "—"}</div></div>

@@ -76,7 +76,7 @@ export default function OwnerNotificationsPage() {
       </OwnerCard>
 
       {loading ? (
-        <OwnerCard>Yuklanmoqda...</OwnerCard>
+        <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
       ) : items.length === 0 ? (
         <OwnerCard style={{ textAlign: "center", color: "#627064", padding: 34 }}>
           <Bell size={34} style={{ marginBottom: 10 }} />

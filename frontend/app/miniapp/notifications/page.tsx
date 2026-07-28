@@ -72,7 +72,7 @@ export default function MiniAppNotificationsPage() {
       </div>
 
       {loading ? (
-        <div className="mini-card">Yuklanmoqda...</div>
+        <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
       ) : items.length === 0 ? (
         <div className="mini-card" style={{ textAlign: "center", color: "var(--mini-muted)", padding: 34 }}>
           <Bell size={34} style={{ marginBottom: 10 }} />

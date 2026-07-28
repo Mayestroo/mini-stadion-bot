@@ -20,7 +20,7 @@ export default function BookingDetailPage() {
       <Header />
       <main style={{ maxWidth: 700, margin: "0 auto", padding: "32px 20px" }}>
         {isLoading ? (
-          <div style={{ textAlign: "center", padding: 40, color: "var(--color-text-secondary)" }}>Yuklanmoqda...</div>
+          <div className="mini-loader"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
         ) : !booking ? (
           <div style={{ textAlign: "center", padding: 60 }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>🔖</div>

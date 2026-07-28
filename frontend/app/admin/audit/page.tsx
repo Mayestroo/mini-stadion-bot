@@ -51,7 +51,7 @@ export default function AdminAuditPage() {
           <AdminInput type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
         </div>
       </AdminCard>
-      {loading ? <AdminCard>Yuklanmoqda...</AdminCard> : error ? <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard> : logs.length === 0 ? (
+      {loading ? <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : error ? <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard> : logs.length === 0 ? (
         <AdminEmptyState icon={<ScrollText size={26} />} title="Audit log bo'sh" text="Actionlar shu yerda ko'rinadi." />
       ) : (
         <div style={{ display: "grid", gap: 10 }}>

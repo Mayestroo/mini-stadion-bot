@@ -148,9 +148,9 @@ export default function MiniStadiumDetail() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100dvh', gap: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #34c759', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
-        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--mini-muted)' }}>Yuklanmoqda...</p>
+      <div className="mini-loader" style={{ height: '100dvh' }}>
+        <div className="mini-loader-spinner" />
+        <div>Yuklanmoqda...</div>
       </div>
     );
   }

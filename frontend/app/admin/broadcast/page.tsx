@@ -201,7 +201,7 @@ export default function AdminBroadcastPage() {
       </div>
 
       {loading ? (
-        <AdminCard>Yuklanmoqda...</AdminCard>
+        <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
       ) : error ? (
         <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard>
       ) : broadcasts.length === 0 ? (

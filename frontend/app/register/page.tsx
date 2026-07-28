@@ -7,7 +7,7 @@ import { useAuthStore } from "@/store/auth";
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>Yuklanmoqda...</div>}>
+    <Suspense fallback={<div className="mini-loader" style={{ minHeight: "100vh" }}><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>}>
       <RegisterContent />
     </Suspense>
   );

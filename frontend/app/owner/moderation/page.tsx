@@ -11,7 +11,7 @@ export default function OwnerModerationPage() {
     <OwnerShell>
       <div style={{ display: "grid", gap: 10 }}>
         <OwnerCard><h2 style={{ fontSize: 25, fontWeight: 950, letterSpacing: "-0.04em" }}>Moderatsiya statuslari</h2><p style={{ color: "#627064", marginTop: 4 }}>Yuborilgan stadion o'zgarishlari.</p></OwnerCard>
-        {isLoading ? <OwnerCard>Yuklanmoqda...</OwnerCard> : drafts.length === 0 ? <OwnerCard>Hozircha so'rov yo'q.</OwnerCard> : drafts.map((draft: StadiumDraft) => (
+        {isLoading ? <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : drafts.length === 0 ? <OwnerCard>Hozircha so'rov yo'q.</OwnerCard> : drafts.map((draft: StadiumDraft) => (
           <OwnerCard key={draft.id}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div><b>{draft.name}</b><div style={{ color: "#627064", fontSize: 13 }}>{draft.draft_type === "create" ? "Yangi stadion" : "Tahrirlash"}</div></div>

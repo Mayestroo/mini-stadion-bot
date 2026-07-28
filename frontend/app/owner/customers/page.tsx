@@ -11,7 +11,7 @@ export default function OwnerCustomersPage() {
     <OwnerShell>
       <div style={{ display: "grid", gap: 10 }}>
         <OwnerCard><h2 style={{ fontSize: 25, fontWeight: 950, letterSpacing: "-0.04em" }}>Mijozlar</h2><p style={{ color: "#627064", marginTop: 4 }}>Stadionlaringizni bron qilgan foydalanuvchilar.</p></OwnerCard>
-        {isLoading ? <OwnerCard>Yuklanmoqda...</OwnerCard> : customers.map((customer: User) => <OwnerCard key={customer.id}><b>{customer.full_name}</b><div style={{ color: "#627064", fontSize: 14 }}>{customer.phone || customer.telegram_id || "Aloqa yo'q"}</div></OwnerCard>)}
+        {isLoading ? <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : customers.map((customer: User) => <OwnerCard key={customer.id}><b>{customer.full_name}</b><div style={{ color: "#627064", fontSize: 14 }}>{customer.phone || customer.telegram_id || "Aloqa yo'q"}</div></OwnerCard>)}
       </div>
     </OwnerShell>
   );

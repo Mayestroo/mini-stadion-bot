@@ -40,8 +40,9 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100dvh" }}>
-        <div style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>Yuklanmoqda...</div>
+      <div className="mini-loader" style={{ height: "100dvh" }}>
+        <div className="mini-loader-spinner" />
+        <div>Yuklanmoqda...</div>
       </div>
     );
   }

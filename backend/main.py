@@ -8,6 +8,7 @@ from jose import JWTError, jwt
 
 from app.core.config import settings
 from app.core.database import SessionLocal
+from app.core.migrations import ensure_runtime_schema
 from app.api.router import api_router
 from app import models
 
@@ -19,6 +20,11 @@ logger = logging.getLogger("maydoncha")
 async def lifespan(app: FastAPI):
     logger.info("Starting Maydoncha API server")
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    try:
+        ensure_runtime_schema()
+        logger.info("Runtime schema applied")
+    except Exception as e:
+        logger.warning("Runtime schema migration failed: %s", e)
     yield
     logger.info("Shutting down Maydoncha API server")
 
