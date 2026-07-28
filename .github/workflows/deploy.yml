@@ -42,6 +42,8 @@ jobs:
           docker compose -p sportly -f docker-compose.prod.yml build
           docker compose -p sportly -f docker-compose.prod.yml up -d
 
+          sleep 10
+
           cp /srv/sportly/deploy/nginx-pentestlab.conf /srv/ielts/deploy/vps/nginx/conf.d/sportly-pentestlab.conf
           docker exec ielts-nginx nginx -t
           docker exec ielts-nginx nginx -s reload
