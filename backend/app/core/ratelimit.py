@@ -60,8 +60,8 @@ def rate_limit(max_requests: int, window_seconds: int = 60):
                 )
             return func(*args, **kwargs)
 
-        import asyncio
-        if asyncio.iscoroutinefunction(func):
+        import inspect
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
     return decorator
@@ -106,5 +106,5 @@ def _client_ip(request: Request | None) -> str:
 
 
 def _is_coroutine(func: Callable) -> bool:
-    import asyncio
-    return asyncio.iscoroutinefunction(func)
+    import inspect
+    return inspect.iscoroutinefunction(func)

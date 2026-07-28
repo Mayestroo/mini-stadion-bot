@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#1a2f4e"/>
+  <circle cx="200" cy="150" r="60" stroke="rgba(255,255,255,0.2)" stroke-width="2" fill="none"/>
+  <rect x="80" y="90" width="240" height="120" rx="60" stroke="rgba(255,255,255,0.15)" stroke-width="2" fill="none"/>
+  <line x1="200" y1="90" x2="200" y2="210" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <line x1="80" y1="150" x2="320" y2="150" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+  <path d="M160 140 Q200 120 240 140" stroke="rgba(52,199,89,0.5)" stroke-width="2" fill="none"/>
+  <path d="M160 160 Q200 180 240 160" stroke="rgba(52,199,89,0.5)" stroke-width="2" fill="none"/>
+  <text x="200" y="264" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="14" font-family="system-ui">Maydoncha</text>
+</svg>

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -89,6 +89,8 @@ class StadiumUpdate(BaseModel):
 
 
 class StadiumResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     slug: str
@@ -122,9 +124,6 @@ class StadiumResponse(BaseModel):
     rating: float
     total_bookings: int
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class AvailabilitySlot(BaseModel):

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional
 from datetime import datetime
 import re
@@ -49,6 +49,8 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     full_name: str
     phone: Optional[str]
@@ -59,22 +61,13 @@ class UserResponse(BaseModel):
     avatar_url: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 class PrivateUserResponse(UserResponse):
     telegram_id: Optional[str]
 
-    class Config:
-        from_attributes = True
-
 
 class AdminUserResponse(UserResponse):
     telegram_id: Optional[str]
-
-    class Config:
-        from_attributes = True
 
 
 class TokenResponse(BaseModel):

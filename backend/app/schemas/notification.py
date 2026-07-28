@@ -1,19 +1,18 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     message: str
     type: str
     is_read: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class NotificationListResponse(BaseModel):
@@ -50,6 +49,8 @@ class BroadcastCreate(BaseModel):
 
 
 class BroadcastResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     title: str
     message: str
@@ -65,9 +66,6 @@ class BroadcastResponse(BaseModel):
     failed_count: int
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 class BroadcastRecipientResponse(BaseModel):

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import re
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.schemas.stadium import StadiumCreate
 from app.schemas.user import PrivateUserResponse, UserResponse
@@ -108,6 +108,8 @@ class StadiumDraftUpdate(BaseModel):
 
 
 class StadiumDraftResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     owner_id: int
     stadium_id: Optional[int]
@@ -146,9 +148,6 @@ class StadiumDraftResponse(BaseModel):
     submitted_at: Optional[datetime]
     reviewed_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
-
 
 class ImageDraftCreate(BaseModel):
     action: str
@@ -163,6 +162,8 @@ class ImageDraftCreate(BaseModel):
 
 
 class ImageDraftResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     owner_id: int
     stadium_id: int
@@ -173,9 +174,6 @@ class ImageDraftResponse(BaseModel):
     review_note: Optional[str]
     created_at: datetime
     reviewed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 
 class BookingCancelRequestCreate(BaseModel):
@@ -203,6 +201,8 @@ class ModerationReview(BaseModel):
 
 
 class BookingCancelRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     booking_id: int
     owner_id: int
@@ -212,6 +212,3 @@ class BookingCancelRequestResponse(BaseModel):
     review_note: Optional[str]
     created_at: datetime
     reviewed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True

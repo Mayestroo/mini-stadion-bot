@@ -1,8 +1,10 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import List
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
     DATABASE_URL: str = "postgresql+psycopg://andijan:andijan@localhost:5432/maydoncha"
 
     SECRET_KEY: str = "change-this-secret-key-in-production"
@@ -26,17 +28,14 @@ class Settings(BaseSettings):
     BOT_API_SECRET: str = "change-this-bot-secret"
     ADMIN_TELEGRAM_IDS: str = ""
 
+    SENTRY_DSN: str = ""
+
     CONTACT_WEBSITE: str = "maydoncha.uz"
     CONTACT_TELEGRAM: str = "@maydoncha_bot"
 
     @property
     def allowed_origins_list(self) -> List[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"
 
 
 settings = Settings()

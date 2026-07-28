@@ -162,7 +162,7 @@ export const uploadApi = {
 };
 
 export function getImageUrl(path?: string): string {
-  if (!path) return "/images/stadium-placeholder.jpg";
+  if (!path) return "/images/stadium-placeholder.svg";
   if (path.startsWith("http")) return path;
   return `${BASE_URL}${path}`;
 }

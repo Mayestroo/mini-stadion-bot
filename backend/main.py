@@ -12,6 +12,10 @@ from app.core.migrations import ensure_runtime_schema
 from app.api.router import api_router
 from app import models
 
+if settings.SENTRY_DSN:
+    import sentry_sdk
+    sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("maydoncha")
 
