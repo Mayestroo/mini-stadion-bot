@@ -15,7 +15,10 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - sportly_internal
+      sportly_internal:
+        aliases:
+          - sportly_postgres
+          - postgres
 
   backend:
     build: ./backend
