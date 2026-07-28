@@ -1,49 +1,49 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: maydoncha_postgres
+    container_name: sportly_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-maydoncha}
-      POSTGRES_USER: ${POSTGRES_USER:-andijan}
+      POSTGRES_DB: ${POSTGRES_DB:-sportly}
+      POSTGRES_USER: ${POSTGRES_USER:-sportly}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
-      - maydoncha_pg_data:/var/lib/postgresql/data
+      - sportly_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-maydoncha}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sportly} -d ${POSTGRES_DB:-sportly}"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - maydoncha_internal
+      - sportly_internal
 
   backend:
     build: ./backend
-    container_name: maydoncha_backend
+    container_name: sportly_backend
     restart: unless-stopped
     command: sh -c "python -c 'from app.core.database import Base, engine; from app import models; Base.metadata.create_all(bind=engine)' && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     expose:
       - "8000"
     volumes:
-      - maydoncha_uploads:/app/uploads
+      - sportly_uploads:/app/uploads
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      maydoncha_internal:
+      sportly_internal:
       ielts_proxy:
         aliases:
-          - maydoncha_backend
+          - sportly_backend
 
   worker:
     build: ./backend
-    container_name: maydoncha_worker
+    container_name: sportly_worker
     restart: unless-stopped
     command: python -m app.worker
     volumes:
-      - maydoncha_uploads:/app/uploads
+      - sportly_uploads:/app/uploads
     env_file:
       - .env
     depends_on:
@@ -59,7 +59,7 @@ services:
       start_period: 10s
     stop_grace_period: 30s
     networks:
-      - maydoncha_internal
+      - sportly_internal
 
   frontend:
     build:
@@ -69,7 +69,7 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_KEY}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-    container_name: maydoncha_frontend
+    container_name: sportly_frontend
     restart: unless-stopped
     expose:
       - "3000"
@@ -80,16 +80,16 @@ services:
     networks:
       ielts_proxy:
         aliases:
-          - maydoncha_frontend
+          - sportly_frontend
 
 networks:
-  maydoncha_internal:
-    name: maydoncha_internal
+  sportly_internal:
+    name: sportly_internal
     driver: bridge
   ielts_proxy:
     external: true
     name: ielts-prod_internal
 
 volumes:
-  maydoncha_pg_data:
-  maydoncha_uploads:
+  sportly_pg_data:
+  sportly_uploads:

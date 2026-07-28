@@ -5,13 +5,13 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 
 export const metadata: Metadata = {
   title: {
-    default: "Maydoncha — Mini Stadionlar",
-    template: "%s | Maydoncha",
+    default: "Sportly — Mini Stadionlar",
+    template: "%s | Sportly",
   },
   description: "Mini futbol stadionlarini toping va online bron qiling",
-  keywords: ["maydoncha", "futbol", "mini stadion", "bron", "sport"],
+  keywords: ["sportly", "futbol", "mini stadion", "bron", "sport"],
   openGraph: {
-    title: "Maydoncha",
+    title: "Sportly",
     description: "Mini futbol stadionlarini toping va online bron qiling",
     locale: "uz_UZ",
     type: "website",

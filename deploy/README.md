@@ -1,4 +1,4 @@
-# Maydoncha VPS Deploy
+# Sportly VPS Deploy
 
 Target VPS already runs the `ielts-prod` Docker Compose project and `ielts-nginx` owns ports 80/443. This project must be deployed as a separate Compose project and routed through the existing Nginx container.
 
@@ -14,14 +14,14 @@ CNAME  www    <DOMAIN>
 
 ## Safe Deploy Outline
 
-1. Clone repo to `/srv/maydoncha`.
-2. Create `/srv/maydoncha/.env` from `.env.example` and set real secrets.
+1. Clone repo to `/srv/sportly`.
+2. Create `/srv/sportly/.env` from `.env.example` and set real secrets.
 3. Build and start:
 
 ```bash
-cd /srv/maydoncha
-docker compose -p maydoncha -f docker-compose.prod.yml build
-docker compose -p maydoncha -f docker-compose.prod.yml up -d
+cd /srv/sportly
+docker compose -p sportly -f docker-compose.prod.yml build
+docker compose -p sportly -f docker-compose.prod.yml up -d
 ```
 
 4. Issue certificates after DNS resolves:
@@ -31,17 +31,17 @@ certbot certonly --webroot -w /var/www/certbot -d <DOMAIN> -d www.<DOMAIN>
 certbot certonly --webroot -w /var/www/certbot -d api.<DOMAIN>
 ```
 
-5. Add the Maydoncha Nginx config as a separate file when the existing Nginx mounts `/srv/ielts/deploy/vps/nginx/conf.d`:
+5. Add the Sportly Nginx config as a separate file when the existing Nginx mounts `/srv/ielts/deploy/vps/nginx/conf.d`:
 
 ```bash
-cp /srv/maydoncha/deploy/nginx-pentestlab.conf /srv/ielts/deploy/vps/nginx/conf.d/maydoncha-pentestlab.conf
+cp /srv/sportly/deploy/nginx-pentestlab.conf /srv/ielts/deploy/vps/nginx/conf.d/sportly-pentestlab.conf
 ```
 
 If the existing Nginx does not include all `conf.d/*.conf` files, back up the current config and append `deploy/nginx-pentestlab.conf` instead:
 
 ```bash
 cp /srv/ielts/deploy/vps/nginx/conf.d/ielts.conf /srv/ielts/deploy/vps/nginx/conf.d/ielts.conf.bak.$(date +%F-%H%M%S)
-cat /srv/maydoncha/deploy/nginx-pentestlab.conf >> /srv/ielts/deploy/vps/nginx/conf.d/ielts.conf
+cat /srv/sportly/deploy/nginx-pentestlab.conf >> /srv/ielts/deploy/vps/nginx/conf.d/ielts.conf
 ```
 
 6. Validate and reload only if valid:
@@ -68,7 +68,7 @@ NEXT_PUBLIC_APP_URL=https://<DOMAIN>
 TELEGRAM_WEBHOOK_URL=https://api.<DOMAIN>/api/v1/bot/webhook
 MINI_APP_URL=https://<DOMAIN>/miniapp
 ALLOWED_ORIGINS=https://<DOMAIN>,https://www.<DOMAIN>
-DATABASE_URL=postgresql+psycopg://andijan:<POSTGRES_PASSWORD>@maydoncha_postgres:5432/maydoncha
+DATABASE_URL=postgresql+psycopg://sportly:<POSTGRES_PASSWORD>@sportly_postgres:5432/sportly
 ```
 
 Rotate Telegram bot token before production if it was shared in chat or committed anywhere.

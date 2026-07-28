@@ -64,7 +64,7 @@ export default function PhoneRequest() {
           <ContactRound size={42} strokeWidth={2.35} />
         </div>
 
-        <div className="mini-eyebrow">Maydoncha</div>
+        <div className="mini-eyebrow">Sportly</div>
         <h2 className="mini-large-title" style={{ fontSize: 30 }}>Ro'yxatdan o'tish</h2>
         <p className="mini-subtitle" style={{ marginBottom: 22 }}>
           Bron qilish uchun Telegram kontakt ulashish funksiyasi orqali telefon raqamingizni tasdiqlang.

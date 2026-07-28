@@ -5,7 +5,7 @@ from typing import List
 
 class Settings(BaseSettings):
     model_config = ConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
-    DATABASE_URL: str = "postgresql+psycopg://andijan:andijan@localhost:5432/maydoncha"
+    DATABASE_URL: str = "postgresql+psycopg://sportly:sportly@localhost:5432/sportly"
 
     SECRET_KEY: str = "change-this-secret-key-in-production"
     ALGORITHM: str = "HS256"
@@ -30,8 +30,8 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: str = ""
 
-    CONTACT_WEBSITE: str = "maydoncha.uz"
-    CONTACT_TELEGRAM: str = "@maydoncha_bot"
+    CONTACT_WEBSITE: str = "sportly.uz"
+    CONTACT_TELEGRAM: str = "@sportly_bot"
 
     @property
     def allowed_origins_list(self) -> List[str]:

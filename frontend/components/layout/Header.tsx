@@ -57,7 +57,7 @@ export function Header() {
           }}
         >
           <span style={{ fontSize: 22 }}>⚽</span>
-          <span>Maydoncha</span>
+          <span>Sportly</span>
         </Link>
 
         <nav style={{ display: "flex", alignItems: "center", gap: 8 }} className="hidden md:flex">

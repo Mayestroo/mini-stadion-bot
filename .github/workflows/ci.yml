@@ -13,7 +13,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: maydoncha_test
+          POSTGRES_DB: sportly_test
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
         ports:
@@ -52,7 +52,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/maydoncha_test
+          DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/sportly_test
           SECRET_KEY: test-secret-key
         run: |
           pip install pytest httpx
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build backend Docker image
-        run: docker build -t maydoncha-backend ./backend
+        run: docker build -t sportly-backend ./backend
 
       - name: Build frontend Docker image
-        run: docker build -t maydoncha-frontend ./frontend
+        run: docker build -t sportly-frontend ./frontend

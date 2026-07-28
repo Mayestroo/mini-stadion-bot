@@ -1,28 +1,28 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: maydoncha_postgres
+    container_name: sportly_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-maydoncha}
-      POSTGRES_USER: ${POSTGRES_USER:-andijan}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-andijan}
+      POSTGRES_DB: ${POSTGRES_DB:-sportly}
+      POSTGRES_USER: ${POSTGRES_USER:-sportly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sportly}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-andijan} -d ${POSTGRES_DB:-maydoncha}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sportly} -d ${POSTGRES_DB:-sportly}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
     networks:
-      - maydoncha_net
+      - sportly_net
 
   backend:
     build: ./backend
-    container_name: maydoncha_backend
+    container_name: sportly_backend
     restart: unless-stopped
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 30"
     ports:
@@ -42,11 +42,11 @@ services:
       start_period: 15s
     stop_grace_period: 30s
     networks:
-      - maydoncha_net
+      - sportly_net
 
   worker:
     build: ./backend
-    container_name: maydoncha_worker
+    container_name: sportly_worker
     restart: unless-stopped
     command: python -m app.worker
     volumes:
@@ -66,7 +66,7 @@ services:
       start_period: 10s
     stop_grace_period: 30s
     networks:
-      - maydoncha_net
+      - sportly_net
 
   frontend:
     build:
@@ -76,7 +76,7 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_KEY}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME}
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
-    container_name: maydoncha_frontend
+    container_name: sportly_frontend
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
@@ -92,11 +92,11 @@ services:
       start_period: 30s
     stop_grace_period: 30s
     networks:
-      - maydoncha_net
+      - sportly_net
 
 
 networks:
-  maydoncha_net:
+  sportly_net:
     driver: bridge
 
 volumes:

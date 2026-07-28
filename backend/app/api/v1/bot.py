@@ -24,12 +24,12 @@ async def _send_mini_app_entry(bot: Bot, chat_id: int, user) -> None:
     webapp_url = _build_mini_app_url(user)
     text = (
         f"Assalomu alaykum, {user.first_name}! 👋\n\n"
-        "🏟 *Maydoncha* — mini futbol stadionlarini "
+        "🏟 *Sportly* — mini futbol stadionlarini "
         "topish va bron qilish uchun qulay platforma.\n\n"
         "Quyidagi tugmani bosib Mini Appni oching 👇"
     )
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⚽ Maydoncha ochish", web_app=WebAppInfo(url=webapp_url))]
+        [InlineKeyboardButton("⚽ Sportly ochish", web_app=WebAppInfo(url=webapp_url))]
     ])
     await bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown", reply_markup=keyboard)
 

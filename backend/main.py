@@ -17,12 +17,12 @@ if settings.SENTRY_DSN:
     sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-logger = logging.getLogger("maydoncha")
+logger = logging.getLogger("sportly")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Maydoncha API server")
+    logger.info("Starting Sportly API server")
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     try:
         ensure_runtime_schema()
@@ -30,11 +30,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("Runtime schema migration failed: %s", e)
     yield
-    logger.info("Shutting down Maydoncha API server")
+    logger.info("Shutting down Sportly API server")
 
 
 app = FastAPI(
-    title="Maydoncha API",
+    title="Sportly API",
     version="1.0.0",
     description="Mini futbol stadionlarini bron qilish tizimi",
     lifespan=lifespan,
@@ -68,7 +68,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
-    return {"message": "Maydoncha API ishlamoqda"}
+    return {"message": "Sportly API ishlamoqda"}
 
 
 @app.get("/health")

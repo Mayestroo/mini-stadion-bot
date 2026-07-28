@@ -1,6 +1,6 @@
-# Maydoncha — Andijonda mini futbol bron qilish platformasi
+# Sportly — Mini futbol bron qilish platformasi
 
-Telegram bot + web ilova orqali Andijondagi mini futbol stadionlarini topish, solishtirish va bron qilish.
+Telegram bot + web ilova orqali mini futbol stadionlarini topish, solishtirish va bron qilish.
 
 ## Tech Stack
 
@@ -16,7 +16,7 @@ Telegram bot + web ilova orqali Andijondagi mini futbol stadionlarini topish, so
 
 ```bash
 # 1. Clone and enter
-git clone <repo> && cd maydoncha
+git clone <repo> && cd sportly
 
 # 2. Configure environment
 cp .env.example .env
@@ -37,7 +37,7 @@ The app will be available at:
 ## Project Structure
 
 ```
-maydoncha/
+sportly/
 ├── backend/           # FastAPI Python backend
 │   ├── app/
 │   │   ├── api/       # API routes (v1)
@@ -73,7 +73,7 @@ See [deploy/README.md](deploy/README.md) for VPS deployment instructions behind 
 
 ## Telegram Bot
 
-Bot: [@maydoncha_bot](https://t.me/maydoncha_bot)
+Bot: [@sportly_bot](https://t.me/sportly_bot)
 
 Set webhook after deploy:
 ```bash
