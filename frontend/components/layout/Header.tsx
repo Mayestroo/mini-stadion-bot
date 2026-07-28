@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuthStore } from "@/store/auth";
 import { Menu, X, User, LogOut } from "lucide-react";
+import Image from "next/image";
 
 export function Header() {
   const pathname = usePathname();
@@ -56,7 +57,9 @@ export function Header() {
             gap: 8,
           }}
         >
-          <span style={{ fontSize: 22 }}>⚽</span>
+          <span style={{ fontSize: 22 }}>
+            <Image src="/sportly-icon.svg" alt="Sportly" width={24} height={24} style={{ display: "block" }} />
+          </span>
           <span>Sportly</span>
         </Link>
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { FeaturedStadiums } from "@/components/stadium/FeaturedStadiums";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -142,7 +143,10 @@ href="https://t.me/sportly_bot"
       <footer style={{ backgroundColor: "var(--color-text-primary)", color: "white", padding: "40px 20px", marginTop: 40 }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>⚽ Sportly</div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+              <Image src="/sportly-icon.svg" alt="Sportly" width={22} height={22} />
+              Sportly
+            </div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>© 2025 Sportly. Barcha huquqlar himoyalangan.</div>
           </div>
           <div style={{ display: "flex", gap: 24 }}>
