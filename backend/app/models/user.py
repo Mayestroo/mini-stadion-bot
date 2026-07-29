@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Index
 from sqlalchemy.orm import relationship
 import enum
 
@@ -15,6 +15,9 @@ class UserRole(str, enum.Enum):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index('ix_users_role_active', 'role', 'is_active'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String(100), nullable=False)

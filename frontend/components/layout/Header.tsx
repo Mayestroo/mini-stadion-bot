@@ -12,15 +12,12 @@ export function Header() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  const isHome = pathname === "/";
+
   const handleLogout = () => {
     logout();
     router.push("/");
   };
-
-  const navLinks = [
-    { href: "/stadionlar", label: "Stadionlar" },
-    { href: "/bron", label: "Bron" },
-  ];
 
   return (
     <header
@@ -28,18 +25,16 @@ export function Header() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        backgroundColor: "rgba(255,255,255,0.85)",
+        backgroundColor: isHome ? "rgba(8, 12, 20, 0.85)" : "rgba(255,255,255,0.85)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderBottom: "1px solid var(--color-border)",
+        borderBottom: isHome ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid var(--color-border)",
       }}
     >
       <div
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full"
         style={{
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "0 20px",
-          height: 60,
+          height: 80,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -49,86 +44,64 @@ export function Header() {
           href="/"
           style={{
             fontWeight: 700,
-            fontSize: 18,
-            color: "var(--color-text-primary)",
+            fontSize: 20,
+            color: isHome ? "#ffffff" : "var(--color-text-primary)",
             textDecoration: "none",
             display: "flex",
             alignItems: "center",
-            gap: 8,
+            gap: 12,
           }}
         >
-          <span style={{ fontSize: 22 }}>
-            <Image src="/sportly-icon.svg" alt="Sportly" width={24} height={24} style={{ display: "block" }} />
-          </span>
-          <span>Sportly</span>
+          <Image src="/sportly-icon.svg" alt="Sportly" width={28} height={28} style={{ display: "block" }} />
+          <span className="tracking-tight">Sportly</span>
         </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 8 }} className="hidden md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "var(--radius-full)",
-                fontSize: 15,
-                fontWeight: 500,
-                textDecoration: "none",
-                color: pathname === link.href ? "var(--color-accent)" : "var(--color-text-secondary)",
-                backgroundColor: pathname === link.href ? "var(--color-accent-light)" : "transparent",
-                transition: "all 0.15s ease",
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
-
+        <nav className="hidden md:flex items-center gap-4">
           {isAuthenticated ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 12 }}>
               {user?.role === "moderator" || user?.role === "superadmin" ? (
                 <Link
                   href="/admin"
                   style={{
                     padding: "8px 16px",
-                    borderRadius: "var(--radius-full)",
+                    borderRadius: "9999px",
                     fontSize: 14,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     textDecoration: "none",
-                    color: "var(--color-accent)",
-                    border: "1px solid var(--color-accent)",
+                    color: isHome ? "#34d399" : "var(--color-accent)",
+                    border: isHome ? "1px solid rgba(52, 211, 153, 0.4)" : "1px solid var(--color-accent)",
+                    backgroundColor: isHome ? "rgba(52, 211, 153, 0.1)" : "transparent",
                   }}
                 >
                   Admin
                 </Link>
               ) : null}
-              <Link
-                href="/profil"
+              <span
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                   padding: "8px 16px",
-                  borderRadius: "var(--radius-full)",
+                  borderRadius: "9999px",
                   fontSize: 14,
                   fontWeight: 500,
-                  textDecoration: "none",
-                  color: "var(--color-text-primary)",
-                  backgroundColor: "var(--color-bg-secondary)",
+                  color: isHome ? "#f8fafc" : "var(--color-text-primary)",
+                  backgroundColor: isHome ? "rgba(255, 255, 255, 0.08)" : "var(--color-bg-secondary)",
                 }}
               >
                 <User size={15} />
                 {user?.full_name?.split(" ")[0]}
-              </Link>
+              </span>
               <button
                 onClick={handleLogout}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   padding: "8px",
-                  borderRadius: "var(--radius-full)",
+                  borderRadius: "9999px",
                   border: "none",
                   backgroundColor: "transparent",
-                  color: "var(--color-text-secondary)",
+                  color: isHome ? "#94a3b8" : "var(--color-text-secondary)",
                   cursor: "pointer",
                 }}
               >
@@ -136,17 +109,22 @@ export function Header() {
               </button>
             </div>
           ) : (
-            <div style={{ display: "flex", gap: 8, marginLeft: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: 12 }}>
               <Link
                 href="/login"
                 style={{
-                  padding: "8px 20px",
-                  borderRadius: "var(--radius-full)",
+                  minHeight: 42,
+                  padding: "8px 18px",
+                  borderRadius: "10px",
                   fontSize: 14,
                   fontWeight: 500,
                   textDecoration: "none",
-                  color: "var(--color-text-primary)",
-                  backgroundColor: "var(--color-bg-secondary)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  color: isHome ? "#cbd5e1" : "var(--color-text-primary)",
+                  backgroundColor: isHome ? "rgba(255, 255, 255, 0.05)" : "var(--color-bg-secondary)",
+                  border: isHome ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
+                  transition: "all 0.15s ease",
                 }}
               >
                 Kirish
@@ -154,13 +132,18 @@ export function Header() {
               <Link
                 href="/register"
                 style={{
+                  minHeight: 42,
                   padding: "8px 20px",
-                  borderRadius: "var(--radius-full)",
+                  borderRadius: "10px",
                   fontSize: 14,
                   fontWeight: 600,
                   textDecoration: "none",
-                  color: "white",
-                  backgroundColor: "var(--color-accent)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  color: "#090d16",
+                  backgroundColor: isHome ? "#10b981" : "var(--color-accent)",
+                  boxShadow: "0 2px 10px rgba(16, 185, 129, 0.2)",
+                  transition: "all 0.15s ease",
                 }}
               >
                 Ro'yxat
@@ -171,13 +154,15 @@ export function Header() {
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden"
+          className="md:hidden flex items-center justify-center"
           style={{
             border: "none",
             background: "none",
             cursor: "pointer",
-            padding: 8,
-            color: "var(--color-text-primary)",
+            padding: 10,
+            minWidth: 44,
+            minHeight: 44,
+            color: isHome ? "#ffffff" : "var(--color-text-primary)",
           }}
         >
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -187,43 +172,25 @@ export function Header() {
       {menuOpen && (
         <div
           style={{
-            backgroundColor: "var(--color-surface)",
-            borderTop: "1px solid var(--color-border)",
-            padding: "12px 20px 20px",
+            backgroundColor: isHome ? "#0f172a" : "var(--color-surface)",
+            borderTop: isHome ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid var(--color-border)",
+            padding: "16px 20px 24px",
           }}
           className="md:hidden"
         >
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              style={{
-                display: "block",
-                padding: "14px 0",
-                fontSize: 16,
-                fontWeight: 500,
-                color: "var(--color-text-primary)",
-                textDecoration: "none",
-                borderBottom: "1px solid var(--color-border)",
-              }}
-            >
-              {link.label}
-            </Link>
-          ))}
           {isAuthenticated ? (
             <>
-              <Link href="/profil" onClick={() => setMenuOpen(false)} style={{ display: "block", padding: "14px 0", fontSize: 16, color: "var(--color-text-primary)", textDecoration: "none", borderBottom: "1px solid var(--color-border)" }}>
-                Profil
+              <Link href="/" onClick={() => setMenuOpen(false)} style={{ display: "block", padding: "14px 0", fontSize: 16, color: isHome ? "#ffffff" : "var(--color-text-primary)", textDecoration: "none", borderBottom: isHome ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid var(--color-border)" }}>
+                Bosh sahifa
               </Link>
-              <button onClick={() => { handleLogout(); setMenuOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "14px 0", fontSize: 16, color: "var(--color-error)", border: "none", background: "none", cursor: "pointer" }}>
+              <button onClick={() => { handleLogout(); setMenuOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "14px 0", fontSize: 16, color: "#f87171", border: "none", background: "none", cursor: "pointer" }}>
                 Chiqish
               </button>
             </>
           ) : (
-            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
-              <Link href="/login" onClick={() => setMenuOpen(false)} style={{ flex: 1, padding: "12px", textAlign: "center", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-bg-secondary)", color: "var(--color-text-primary)", textDecoration: "none", fontWeight: 500 }}>Kirish</Link>
-              <Link href="/register" onClick={() => setMenuOpen(false)} style={{ flex: 1, padding: "12px", textAlign: "center", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-accent)", color: "white", textDecoration: "none", fontWeight: 600 }}>Ro'yxat</Link>
+            <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
+              <Link href="/login" onClick={() => setMenuOpen(false)} style={{ flex: 1, padding: "12px", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "12px", backgroundColor: isHome ? "rgba(255, 255, 255, 0.08)" : "var(--color-bg-secondary)", color: isHome ? "#ffffff" : "var(--color-text-primary)", textDecoration: "none", fontWeight: 500 }}>Kirish</Link>
+              <Link href="/register" onClick={() => setMenuOpen(false)} style={{ flex: 1, padding: "12px", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "12px", backgroundColor: isHome ? "#10b981" : "var(--color-accent)", color: "#090d16", textDecoration: "none", fontWeight: 600 }}>Ro'yxat</Link>
             </div>
           )}
         </div>

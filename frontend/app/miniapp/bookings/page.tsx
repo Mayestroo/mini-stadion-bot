@@ -1,17 +1,13 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
 import { useTelegram } from "@/components/miniapp/TelegramProvider";
-import { bookingApi } from "@/lib/api";
+import { useMyBookings } from "@/hooks/useMyBookings";
 import { formatPrice, getBookingStatusLabel } from "@/lib/utils";
 import { CalendarCheck, ClipboardList, Clock3 } from "lucide-react";
 
 export default function MiniBookingsPage() {
   const { theme } = useTelegram();
 
-  const { data: bookings = [], isLoading } = useQuery({
-    queryKey: ["miniapp-bookings"],
-    queryFn: () => bookingApi.getMyBookings(),
-  });
+  const { data: bookings = [], isLoading } = useMyBookings();
 
   const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";
 

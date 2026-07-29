@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       authTelegram({ init_data: initData })
         .then((data) => {
           if (data.user.phone) {
-            login(data.user, data.access_token);
+            login(data.user);
           } else {
             router.push("/login?redirect=" + encodeURIComponent(pathname));
           }

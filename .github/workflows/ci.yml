@@ -47,6 +47,11 @@ jobs:
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
+      - name: Check import layering
+        run: |
+          pip install import-linter
+          lint-imports --config .importlinter
+
       - name: Compile Python files
         run: python -m compileall -q app main.py
 

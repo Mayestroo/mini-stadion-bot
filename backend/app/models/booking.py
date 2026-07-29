@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 import enum
 
@@ -15,6 +15,10 @@ class BookingStatus(str, enum.Enum):
 
 class Booking(Base):
     __tablename__ = "bookings"
+    __table_args__ = (
+        UniqueConstraint('stadium_id', 'date', 'start_time', name='uq_booking_slot'),
+        Index('ix_bookings_stadium_date_status', 'stadium_id', 'date', 'status'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     booking_code = Column(String(20), unique=True, nullable=False, index=True)

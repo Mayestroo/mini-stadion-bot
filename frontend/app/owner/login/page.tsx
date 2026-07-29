@@ -20,7 +20,7 @@ export default function OwnerLoginPage() {
     setLoading(true);
     try {
       const data = await authApi.ownerLogin({ owner_login: ownerLogin, password });
-      login(data.user, data.access_token);
+      login(data.user);
       router.push(data.user.must_change_password ? "/owner/change-password" : "/owner");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Kirishda xatolik yuz berdi");

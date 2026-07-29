@@ -1,3 +1,4 @@
+import threading
 import time
 from collections import defaultdict
 from functools import wraps
@@ -12,15 +13,22 @@ class InMemoryRateLimiter:
 
     def __init__(self):
         self._windows: dict[str, list[float]] = defaultdict(list)
+        self._lock = threading.Lock()
+        self._check_count = 0
 
     def check(self, key: str, max_requests: int, window_seconds: int) -> bool:
-        now = time.time()
-        window_start = now - window_seconds
-        self._windows[key] = [t for t in self._windows[key] if t > window_start]
-        if len(self._windows[key]) >= max_requests:
-            return False
-        self._windows[key].append(now)
-        return True
+        with self._lock:
+            self._check_count += 1
+            if self._check_count >= 100:
+                self._check_count = 0
+                self.cleanup()
+            now = time.time()
+            window_start = now - window_seconds
+            self._windows[key] = [t for t in self._windows[key] if t > window_start]
+            if len(self._windows[key]) >= max_requests:
+                return False
+            self._windows[key].append(now)
+            return True
 
     def cleanup(self):
         now = time.time()
@@ -103,8 +111,3 @@ def _client_ip(request: Request | None) -> str:
             return forwarded.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
     return "unknown"
-
-
-def _is_coroutine(func: Callable) -> bool:
-    import inspect
-    return inspect.iscoroutinefunction(func)

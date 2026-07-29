@@ -1,0 +1,23 @@
+import { api } from "./client";
+
+export const superadminApi = {
+  getStatistics: () => api.get("/admin/statistics").then((r) => r.data),
+  getOwners: () => api.get("/admin/owners").then((r) => r.data),
+  createOwner: (data: any) => api.post("/admin/owners", data).then((r) => r.data),
+  updateOwner: (id: number, data: any) => api.patch(`/admin/owners/${id}`, data).then((r) => r.data),
+  getStadiumDrafts: () => api.get("/admin/moderation/stadium-drafts").then((r) => r.data),
+  approveStadiumDraft: (id: number, review_note?: string) => api.post(`/admin/moderation/stadium-drafts/${id}/approve`, { review_note }).then((r) => r.data),
+  rejectStadiumDraft: (id: number, review_note?: string) => api.post(`/admin/moderation/stadium-drafts/${id}/reject`, { review_note }).then((r) => r.data),
+  getImageDrafts: () => api.get("/admin/moderation/image-drafts").then((r) => r.data),
+  approveImageDraft: (id: number, review_note?: string) => api.post(`/admin/moderation/image-drafts/${id}/approve`, { review_note }).then((r) => r.data),
+  rejectImageDraft: (id: number, review_note?: string) => api.post(`/admin/moderation/image-drafts/${id}/reject`, { review_note }).then((r) => r.data),
+  getCancelRequests: () => api.get("/admin/moderation/cancel-requests").then((r) => r.data),
+  approveCancelRequest: (id: number, review_note?: string) => api.post(`/admin/moderation/cancel-requests/${id}/approve`, { review_note }).then((r) => r.data),
+  rejectCancelRequest: (id: number, review_note?: string) => api.post(`/admin/moderation/cancel-requests/${id}/reject`, { review_note }).then((r) => r.data),
+  getBroadcasts: () => api.get("/admin/broadcasts").then((r) => r.data),
+  createBroadcast: (data: { audience: "users" | "owners" | "all" | "booked_users" | "stadium_customers"; stadium_id?: number; title: string; message: string; image_url?: string; cta_text?: string; cta_url?: string; parse_mode?: "HTML" | "Markdown" | "" }) => api.post("/admin/broadcasts", data).then((r) => r.data),
+  previewBroadcast: (data: { audience: "users" | "owners" | "all" | "booked_users" | "stadium_customers"; stadium_id?: number; title: string; message: string }) => api.post("/admin/broadcasts/preview", data).then((r) => r.data),
+  retryBroadcastFailed: (id: number) => api.post(`/admin/broadcasts/${id}/retry-failed`).then((r) => r.data),
+  getBroadcastRecipients: (id: number) => api.get(`/admin/broadcasts/${id}/recipients`).then((r) => r.data),
+  getAuditLogs: (params?: Record<string, any>) => api.get("/admin/audit", { params }).then((r) => r.data),
+};

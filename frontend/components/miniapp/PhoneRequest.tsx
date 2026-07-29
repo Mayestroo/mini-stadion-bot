@@ -17,7 +17,7 @@ export default function PhoneRequest() {
     if (tgUser && initData) {
       authTelegram({ init_data: initData }).then((data) => {
         if (data.user.phone) {
-          login(data.user, data.access_token);
+          login(data.user);
           router.replace("/miniapp");
         }
       }).catch(() => {});
@@ -45,7 +45,7 @@ export default function PhoneRequest() {
         init_data: initData,
         phone: contact.phone_number,
       });
-      login(data.user, data.access_token);
+      login(data.user);
       router.replace("/miniapp");
     } catch {
       setError("Ro'yxatdan o'tishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.");

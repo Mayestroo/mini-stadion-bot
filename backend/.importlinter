@@ -1,0 +1,56 @@
+[importlinter]
+root_package = app
+include_external_packages = False
+
+[importlinter:contract:main-layers]
+name = Main layering (entrypoints > services > schemas > core)
+type = layers
+layers =
+    app.api
+    app.worker
+    app.services
+    app.schemas
+    app.core
+
+[importlinter:contract:no-api-below]
+name = Core, services, schemas and models must not import the api layer
+type = forbidden
+source_modules =
+    app.core
+    app.services
+    app.schemas
+    app.models
+forbidden_modules =
+    app.api
+
+[importlinter:contract:models-isolation]
+name = Models may only import core.database and core.config
+type = forbidden
+source_modules =
+    app.models
+forbidden_modules =
+    app.api
+    app.worker
+    app.services
+    app.schemas
+    app.core.analytics
+    app.core.audit
+    app.core.dependencies
+    app.core.migrations
+    app.core.notifications
+    app.core.ratelimit
+    app.core.sanitize
+    app.core.security
+    app.core.telegram
+
+[importlinter:contract:schemas-isolation]
+name = Schemas stay independent of api, core, services and models
+type = forbidden
+source_modules =
+    app.schemas
+forbidden_modules =
+    app.api
+    app.worker
+    app.services
+    app.core
+    app.models

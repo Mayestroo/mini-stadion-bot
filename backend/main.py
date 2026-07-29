@@ -2,13 +2,13 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from contextlib import asynccontextmanager
 import os
-from jose import JWTError, jwt
 
 from app.core.config import settings
-from app.core.database import SessionLocal
-from app.core.migrations import ensure_runtime_schema
+from app.core.database import get_db
+from app.core.migrations import run_migrations
 from app.api.router import api_router
 from app import models
 
@@ -25,10 +25,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Sportly API server")
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     try:
-        ensure_runtime_schema()
-        logger.info("Runtime schema applied")
+        run_migrations()
+        logger.info("Database migrations applied")
     except Exception as e:
-        logger.warning("Runtime schema migration failed: %s", e)
+        logger.warning("Database migration failed: %s", e)
     yield
     logger.info("Shutting down Sportly API server")
 
@@ -73,13 +73,13 @@ async def root():
 
 @app.get("/health")
 async def health():
-    from sqlalchemy import text
     db_ok = False
+    db = next(get_db())
     try:
-        db = SessionLocal()
         db.execute(text("SELECT 1"))
-        db.close()
         db_ok = True
     except Exception:
         pass
+    finally:
+        db.close()
     return {"status": "ok" if db_ok else "degraded", "database": "connected" if db_ok else "disconnected"}

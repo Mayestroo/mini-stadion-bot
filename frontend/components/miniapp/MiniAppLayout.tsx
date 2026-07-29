@@ -63,7 +63,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="mini-app max-w-[480px] mx-auto min-h-screen relative shadow-2xl bg-white dark:bg-black" data-theme={theme}>
+    <div className="mini-app max-w-120 mx-auto min-h-screen relative shadow-2xl bg-white dark:bg-black" data-theme={theme}>
       <main className="mini-page">
         {children}
       </main>

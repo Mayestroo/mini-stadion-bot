@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.core.notifications import (
+from app.services.notifications import (
     get_notifications_for_user,
     get_unread_count_for_user,
     mark_all_read_for_user,

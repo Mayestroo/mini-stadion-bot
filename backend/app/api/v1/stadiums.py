@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
-import re
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
@@ -10,6 +9,8 @@ from app.models.stadium import Stadium
 from app.models.booking import Booking, BookingStatus
 from app.models.user import User, UserRole
 from app.schemas.stadium import ALLOWED_STADIUM_FIELDS, StadiumCreate, StadiumUpdate, StadiumResponse, AvailabilitySlot
+from app.services.pricing import calculate_price
+from app.services.slugs import generate_slug
 
 router = APIRouter(prefix="/stadiums", tags=["Stadiums"])
 
@@ -22,13 +23,6 @@ def slot_has_minimum_lead_time(day: str, slot_time: str) -> bool:
     except ValueError:
         return False
     return slot_start - now >= timedelta(minutes=10)
-
-
-def generate_slug(name: str) -> str:
-    slug = name.lower()
-    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
-    slug = re.sub(r"\s+", "-", slug).strip("-")
-    return slug
 
 
 @router.get("/", response_model=List[StadiumResponse])
@@ -103,6 +97,28 @@ def get_availability(
         slots.append(AvailabilitySlot(time=slot_time, available=available))
 
     return {"date": date, "stadium_id": stadium_id, "slots": slots}
+
+
+@router.get("/{stadium_id}/quote")
+def get_price_quote(
+    stadium_id: int,
+    date: str = Query(..., description="YYYY-MM-DD"),
+    start_time: str = Query(..., description="HH:MM"),
+    end_time: str = Query(..., description="HH:MM"),
+    db: Session = Depends(get_db),
+):
+    stadium = db.query(Stadium).filter(Stadium.id == stadium_id, Stadium.is_active == True).first()
+    if not stadium:
+        raise HTTPException(status_code=404, detail="Stadion topilmadi")
+    total_price, duration_hours = calculate_price(stadium, start_time, end_time, date)
+    return {
+        "stadium_id": stadium_id,
+        "date": date,
+        "start_time": start_time,
+        "end_time": end_time,
+        "duration_hours": duration_hours,
+        "total_price": total_price,
+    }
 
 
 @router.get("/{slug}", response_model=StadiumResponse)

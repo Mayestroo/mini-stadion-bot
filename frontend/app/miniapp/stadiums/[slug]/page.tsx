@@ -45,6 +45,12 @@ export default function MiniStadiumDetail() {
     enabled: !!stadium && !!selectedDate,
   });
 
+  const { data: quote } = useQuery({
+    queryKey: ["quote", stadium?.id, selectedDate, selectedStart, selectedEnd],
+    queryFn: () => stadiumApi.getQuote(stadium!.id, { date: selectedDate, start_time: selectedStart, end_time: selectedEnd }),
+    enabled: !!stadium && !!selectedDate && !!selectedStart && !!selectedEnd,
+  });
+
   const monthNames = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
 
   // Generate next 7 days
@@ -384,7 +390,7 @@ export default function MiniStadiumDetail() {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '12px 14px', borderRadius: 14, background: 'rgba(52,199,89,0.10)', border: '1px solid rgba(52,199,89,0.22)', marginTop: 10, marginLeft: 4, marginRight: 4 }}>
                               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(52,199,89,0.8)' }}>Tanlangan</div>
                               <div style={{ fontSize: 14, fontWeight: 700, color: '#34c759' }}>{selectedDate} • {selectedStart} — {selectedEnd}</div>
-                              <div style={{ fontSize: 17, fontWeight: 900, color: '#34c759' }}>{formatPrice(stadium.price_per_hour * duration)}</div>
+                              <div style={{ fontSize: 17, fontWeight: 900, color: '#34c759' }}>{formatPrice(quote?.total_price ?? stadium.price_per_hour * duration)}</div>
                           </div>
                           <button
                             onClick={handleBook}

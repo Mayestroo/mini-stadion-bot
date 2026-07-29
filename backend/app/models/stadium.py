@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, Index
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base, utcnow
@@ -6,6 +6,9 @@ from app.core.database import Base, utcnow
 
 class Stadium(Base):
     __tablename__ = "stadiums"
+    __table_args__ = (
+        Index('ix_stadiums_active_featured', 'is_active', 'is_featured'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)

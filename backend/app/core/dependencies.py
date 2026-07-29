@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -14,12 +14,14 @@ security = HTTPBearer(auto_error=False)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    access_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db),
 ) -> User:
-    if not credentials:
+    token = credentials.credentials if credentials else access_token
+    if not token:
         raise HTTPException(status_code=401, detail="Token kerak")
 
-    payload = decode_token(credentials.credentials)
+    payload = decode_token(token)
     if not payload:
         raise HTTPException(status_code=401, detail="Token noto'g'ri yoki muddati o'tgan")
 
@@ -59,11 +61,12 @@ def get_current_superadmin(current_user: User = Depends(get_current_user)) -> Us
 
 def get_optional_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    access_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db),
 ) -> Optional[User]:
-    if not credentials:
+    if not credentials and not access_token:
         return None
     try:
-        return get_current_user(credentials, db)
+        return get_current_user(credentials, access_token, db)
     except HTTPException:
         return None

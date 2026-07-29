@@ -8,13 +8,13 @@ import { BarChart3, CalendarDays, ClipboardCheck, MessageCircle, ShieldCheck, Sp
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, hydrated } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated || (user?.role !== "moderator" && user?.role !== "superadmin")) {
+    if (hydrated && (!isAuthenticated || (user?.role !== "moderator" && user?.role !== "superadmin"))) {
       router.push("/login");
     }
-  }, [isAuthenticated, user, router]);
+  }, [hydrated, isAuthenticated, user, router]);
 
   if (!user) return null;
 

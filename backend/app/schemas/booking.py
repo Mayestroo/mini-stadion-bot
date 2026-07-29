@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime
 import re
 
@@ -67,3 +67,24 @@ class BookingResponse(BaseModel):
     note: Optional[str]
     admin_note: Optional[str]
     created_at: datetime
+
+    @classmethod
+    def from_model(cls, b: Any) -> "BookingResponse":
+        return cls(
+            id=b.id,
+            booking_code=b.booking_code,
+            stadium_id=b.stadium_id,
+            stadium_name=b.stadium.name,
+            user_id=b.user_id,
+            user_name=b.user.full_name,
+            user_phone=b.user.phone,
+            date=b.date,
+            start_time=b.start_time,
+            end_time=b.end_time,
+            duration_hours=b.duration_hours,
+            total_price=b.total_price,
+            status=b.status.value,
+            note=b.note,
+            admin_note=b.admin_note,
+            created_at=b.created_at,
+        )

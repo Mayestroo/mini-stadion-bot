@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
+from typing import Iterator
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -74,7 +75,6 @@ def create_broadcast(
     parse_mode: str | None = None,
     stadium_id: int | None = None,
 ) -> Broadcast:
-    targets = broadcast_targets(db, audience, stadium_id)
     broadcast = Broadcast(
         created_by=creator.id,
         audience=audience,
@@ -85,13 +85,18 @@ def create_broadcast(
         cta_url=cta_url,
         parse_mode=parse_mode,
         stadium_id=stadium_id,
-        total_count=len(targets),
+        total_count=broadcast_target_count(db, audience, stadium_id),
         status=BroadcastStatus.queued,
     )
     db.add(broadcast)
     db.flush()
-    for user in targets:
-        db.add(BroadcastRecipient(broadcast_id=broadcast.id, user_id=user.id))
+    db.bulk_insert_mappings(
+        BroadcastRecipient,
+        [
+            {"broadcast_id": broadcast.id, "user_id": user.id}
+            for user in broadcast_targets(db, audience, stadium_id)
+        ],
+    )
     return broadcast
 
 
@@ -149,11 +154,9 @@ def process_broadcast_queue(limit: int = 25) -> None:
         db.close()
 
 
-def broadcast_target_count(db: Session, audience: BroadcastAudience, stadium_id: int | None = None) -> int:
-    return len(broadcast_targets(db, audience, stadium_id))
-
-
-def broadcast_targets(db: Session, audience: BroadcastAudience, stadium_id: int | None = None) -> list[User]:
+def _broadcast_target_query(db: Session, audience: BroadcastAudience, stadium_id: int | None = None):
+    if audience == BroadcastAudience.stadium_customers and not stadium_id:
+        return None
     query = db.query(User).filter(User.is_active == True, User.telegram_id.isnot(None))
     if audience == BroadcastAudience.users:
         query = query.filter(User.role == UserRole.user)
@@ -162,26 +165,33 @@ def broadcast_targets(db: Session, audience: BroadcastAudience, stadium_id: int 
     elif audience == BroadcastAudience.booked_users:
         query = query.join(Booking, Booking.user_id == User.id).distinct()
     elif audience == BroadcastAudience.stadium_customers:
-        if not stadium_id:
-            return []
         query = query.join(Booking, Booking.user_id == User.id).filter(Booking.stadium_id == stadium_id).distinct()
-    return query.order_by(User.id.asc()).all()
+    return query
+
+
+def broadcast_target_count(db: Session, audience: BroadcastAudience, stadium_id: int | None = None) -> int:
+    query = _broadcast_target_query(db, audience, stadium_id)
+    if query is None:
+        return 0
+    return query.count()
+
+
+def broadcast_targets(db: Session, audience: BroadcastAudience, stadium_id: int | None = None) -> Iterator[User]:
+    query = _broadcast_target_query(db, audience, stadium_id)
+    if query is None:
+        return iter(())
+    return query.order_by(User.id.asc()).yield_per(500)
 
 
 def _refresh_broadcast_status(db: Session, broadcast: Broadcast) -> None:
     db.flush()
-    broadcast.sent_count = db.query(BroadcastRecipient).filter(
+    rows = db.query(BroadcastRecipient.status, func.count()).filter(
         BroadcastRecipient.broadcast_id == broadcast.id,
-        BroadcastRecipient.status == BroadcastRecipientStatus.sent,
-    ).count()
-    broadcast.failed_count = db.query(BroadcastRecipient).filter(
-        BroadcastRecipient.broadcast_id == broadcast.id,
-        BroadcastRecipient.status == BroadcastRecipientStatus.failed,
-    ).count()
-    pending = db.query(BroadcastRecipient).filter(
-        BroadcastRecipient.broadcast_id == broadcast.id,
-        BroadcastRecipient.status == BroadcastRecipientStatus.pending,
-    ).count()
+    ).group_by(BroadcastRecipient.status).all()
+    counts = {status: count for status, count in rows}
+    broadcast.sent_count = counts.get(BroadcastRecipientStatus.sent, 0)
+    broadcast.failed_count = counts.get(BroadcastRecipientStatus.failed, 0)
+    pending = counts.get(BroadcastRecipientStatus.pending, 0)
     if pending == 0:
         broadcast.status = BroadcastStatus.completed if broadcast.failed_count == 0 else BroadcastStatus.failed
     else:

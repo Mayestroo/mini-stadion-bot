@@ -32,7 +32,7 @@ function RegisterContent() {
         phone: form.phone,
         password: form.password,
       });
-      login(data.user, data.access_token);
+      login(data.user);
       router.push(searchParams.get("redirect") || "/");
     } catch (err: any) {
       setError(err.response?.data?.detail || "Xatolik yuz berdi");

@@ -2,13 +2,13 @@ from datetime import date, datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.v1.bookings import _booking_to_response
 from app.core.analytics import track_event
 from app.core.database import get_db
 from app.core.dependencies import get_current_owner
-from app.core.notifications import (
+from app.services.notifications import (
     notify_admins,
     notify_user,
     get_notifications_for_user,
@@ -97,7 +97,19 @@ def get_owner_stats(
             "pending_moderation": 0,
         }
 
-    bookings = db.query(Booking).filter(Booking.stadium_id.in_(stadium_ids)).all()
+    today_bookings = db.query(func.count(Booking.id)).filter(
+        Booking.stadium_id.in_(stadium_ids),
+        Booking.date == today,
+    ).scalar() or 0
+    pending_bookings = db.query(func.count(Booking.id)).filter(
+        Booking.stadium_id.in_(stadium_ids),
+        Booking.status == BookingStatus.pending,
+    ).scalar() or 0
+    monthly_revenue = db.query(func.coalesce(func.sum(Booking.total_price), 0)).filter(
+        Booking.stadium_id.in_(stadium_ids),
+        Booking.date.like(f"{month_prefix}%"),
+        Booking.status.in_([BookingStatus.confirmed, BookingStatus.completed]),
+    ).scalar() or 0
     pending_drafts = db.query(StadiumDraft).filter(
         StadiumDraft.owner_id == owner.id,
         StadiumDraft.status == ModerationStatus.pending,
@@ -112,13 +124,9 @@ def get_owner_stats(
     ).count()
 
     return {
-        "today_bookings": sum(1 for booking in bookings if booking.date == today),
-        "pending_bookings": sum(1 for booking in bookings if booking.status == BookingStatus.pending),
-        "monthly_revenue": sum(
-            booking.total_price
-            for booking in bookings
-            if booking.date.startswith(month_prefix) and booking.status in (BookingStatus.confirmed, BookingStatus.completed)
-        ),
+        "today_bookings": today_bookings,
+        "pending_bookings": pending_bookings,
+        "monthly_revenue": monthly_revenue,
         "active_stadiums": db.query(Stadium).filter(Stadium.owner_id == owner.id, Stadium.is_active == True).count(),
         "pending_moderation": pending_drafts + pending_images + pending_cancellations,
     }
@@ -252,6 +260,8 @@ def get_owner_bookings(
     stadium_id: Optional[int] = None,
     status: Optional[str] = None,
     booking_date: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 50,
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),
 ):
@@ -262,8 +272,8 @@ def get_owner_bookings(
         query = query.filter(Booking.status == status)
     if booking_date:
         query = query.filter(Booking.date == booking_date)
-    bookings = query.order_by(Booking.created_at.desc()).all()
-    return [_booking_to_response(booking) for booking in bookings]
+    bookings = query.order_by(Booking.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    return [BookingResponse.from_model(booking) for booking in bookings]
 
 
 @router.patch("/bookings/{booking_id}/confirm")
