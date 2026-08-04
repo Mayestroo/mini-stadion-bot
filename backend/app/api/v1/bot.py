@@ -1,3 +1,5 @@
+import hmac
+
 from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session, joinedload
@@ -7,6 +9,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update, We
 from app.core.database import SessionLocal, get_db
 from app.core.analytics import track_event
 from app.core.config import settings
+from app.services.bookings import adjust_total_bookings, notify_booking_status_changed
 from app.services.notifications import notify_user
 from app.models.user import User
 from app.models.booking import Booking, BookingStatus
@@ -14,6 +17,18 @@ from app.models.notification import NotificationType
 from app.schemas.booking import BookingResponse
 
 router = APIRouter(prefix="/bot", tags=["Bot Internal"])
+
+
+def require_bot_secret(authorization: str = Header(None)) -> None:
+    """Shared secret check for machine-to-machine /bot/* endpoints.
+
+    Fails closed: refuses to authorize while BOT_API_SECRET is unset.
+    """
+    expected = settings.BOT_API_SECRET
+    if not expected or not authorization:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if not hmac.compare_digest(authorization, f"Bearer {expected}"):
+        raise HTTPException(status_code=403, detail="Forbidden")
 
 
 def _build_mini_app_url(user) -> str:
@@ -98,7 +113,12 @@ async def telegram_webhook(
     if not settings.TELEGRAM_BOT_TOKEN:
         raise HTTPException(status_code=503, detail="Telegram bot token is not configured")
 
-    if settings.TELEGRAM_WEBHOOK_SECRET and x_telegram_bot_api_secret_token != settings.TELEGRAM_WEBHOOK_SECRET:
+    # Fail closed: without a webhook secret, forged updates would be accepted.
+    if not settings.TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Telegram webhook secret is not configured")
+    if not x_telegram_bot_api_secret_token or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token, settings.TELEGRAM_WEBHOOK_SECRET
+    ):
         raise HTTPException(status_code=403, detail="Forbidden")
 
     bot = Bot(settings.TELEGRAM_BOT_TOKEN)
@@ -111,7 +131,11 @@ async def telegram_webhook(
         query = update.callback_query
         data = query.data or ""
         if data.startswith("confirm_booking:"):
-            booking_id = int(data.split(":", 1)[1])
+            try:
+                booking_id = int(data.split(":", 1)[1])
+            except (ValueError, IndexError):
+                await query.answer("Noto'g'ri so'rov", show_alert=True)
+                return {"ok": True}
             result = await run_in_threadpool(_process_booking_confirm, booking_id, user.id)
             if result == "forbidden":
                 await query.answer("Ruxsat yo'q", show_alert=True)
@@ -148,10 +172,8 @@ async def telegram_webhook(
     return {"ok": True}
 
 
-@router.post("/set-webhook")
-async def set_telegram_webhook(authorization: str = Header(None)):
-    if authorization != f"Bearer {settings.BOT_API_SECRET}":
-        raise HTTPException(status_code=403, detail="Forbidden")
+@router.post("/set-webhook", dependencies=[Depends(require_bot_secret)])
+async def set_telegram_webhook():
     if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_WEBHOOK_URL:
         raise HTTPException(status_code=400, detail="Telegram token or webhook URL is not configured")
 
@@ -170,15 +192,11 @@ class SavePhoneRequest(BaseModel):
     full_name: str = ""
 
 
-@router.post("/save-phone")
+@router.post("/save-phone", dependencies=[Depends(require_bot_secret)])
 def save_phone(
     data: SavePhoneRequest,
-    authorization: str = Header(None),
     db: Session = Depends(get_db),
 ):
-    if authorization != f"Bearer {settings.BOT_API_SECRET}":
-        raise HTTPException(status_code=403, detail="Forbidden")
-
     telegram_id = str(data.telegram_id)
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
@@ -209,14 +227,10 @@ class BotBookingAction(BaseModel):
     status: str
 
 
-@router.get("/pending-bookings")
+@router.get("/pending-bookings", dependencies=[Depends(require_bot_secret)])
 def bot_pending_bookings(
-    authorization: str = Header(None),
     db: Session = Depends(get_db),
 ):
-    if authorization != f"Bearer {settings.BOT_API_SECRET}":
-        raise HTTPException(status_code=403, detail="Forbidden")
-
     bookings = db.query(Booking).options(
         joinedload(Booking.stadium), joinedload(Booking.user)
     ).filter(
@@ -226,16 +240,12 @@ def bot_pending_bookings(
     return [BookingResponse.from_model(b) for b in bookings]
 
 
-@router.patch("/booking-status")
+@router.patch("/booking-status", dependencies=[Depends(require_bot_secret)])
 def bot_update_booking_status(
     data: BotBookingAction,
-    authorization: str = Header(None),
     db: Session = Depends(get_db),
 ):
-    if authorization != f"Bearer {settings.BOT_API_SECRET}":
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    booking = db.query(Booking).filter(Booking.id == data.booking_id).first()
+    booking = db.query(Booking).options(joinedload(Booking.stadium), joinedload(Booking.user)).filter(Booking.id == data.booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Bron topilmadi")
 
@@ -243,6 +253,12 @@ def bot_update_booking_status(
     if data.status not in valid:
         raise HTTPException(status_code=400, detail=f"Status '{data.status}' noto'g'ri")
 
+    if data.status == "cancelled" and booking.status != BookingStatus.cancelled:
+        adjust_total_bookings(db, booking.stadium_id, -1)
     booking.status = data.status
+    track_event(db, "bot_booking_status_update", metadata={"booking_id": booking.id, "status": data.status})
+    db.commit()
+    db.refresh(booking)
+    notify_booking_status_changed(db, booking)
     db.commit()
     return {"message": "Holat yangilandi", "status": data.status}

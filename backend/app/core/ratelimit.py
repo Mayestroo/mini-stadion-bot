@@ -1,15 +1,18 @@
+import ipaddress
 import threading
 import time
 from collections import defaultdict
-from functools import wraps
-from typing import Callable
 
 from fastapi import HTTPException, Request
-from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class InMemoryRateLimiter:
-    """Sliding-window in-memory rate limiter."""
+    """Sliding-window in-memory rate limiter.
+
+    Per-process: limits reset on restart and are not shared between
+    containers/workers. Sufficient for the current single-replica
+    deployment; move to Redis if the API is ever scaled out.
+    """
 
     def __init__(self):
         self._windows: dict[str, list[float]] = defaultdict(list)
@@ -41,73 +44,42 @@ class InMemoryRateLimiter:
 limiter = InMemoryRateLimiter()
 
 
-def rate_limit(max_requests: int, window_seconds: int = 60):
-    """Decorator for rate limiting endpoints by client IP."""
-    def decorator(func: Callable):
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            request = _find_request(kwargs)
-            client_ip = _client_ip(request)
-            key = f"{func.__name__}:{client_ip}"
-            if not limiter.check(key, max_requests, window_seconds):
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Juda ko'p so'rov. Iltimos {window_seconds} soniyadan keyin urinib ko'ring",
-                )
-            return await func(*args, **kwargs)
+def _client_ip(request: Request) -> str:
+    """Resolve the client IP.
 
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            request = _find_request(kwargs)
-            client_ip = _client_ip(request)
-            key = f"{func.__name__}:{client_ip}"
-            if not limiter.check(key, max_requests, window_seconds):
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"Juda ko'p so'rov. Iltimos {window_seconds} soniyadan keyin urinib ko'ring",
-                )
-            return func(*args, **kwargs)
-
-        import inspect
-        if inspect.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-    return decorator
-
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Global per-IP rate limiting middleware (optional, applied to all routes)."""
-
-    def __init__(self, app, max_requests: int = 120, window_seconds: int = 60):
-        super().__init__(app)
-        self.max_requests = max_requests
-        self.window_seconds = window_seconds
-
-    async def dispatch(self, request: Request, call_next):
-        if request.url.path.startswith(("/api/v1/bot/webhook", "/health", "/")):
-            return await call_next(request)
-
-        client_ip = _client_ip(request)
-        if not limiter.check(f"global:{client_ip}", self.max_requests, self.window_seconds):
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=429,
-                content={"detail": "Juda ko'p so'rov. Iltimos bir ozdan keyin urinib ko'ring"},
-            )
-        return await call_next(request)
-
-
-def _find_request(kwargs: dict) -> Request | None:
-    for value in kwargs.values():
-        if isinstance(value, Request):
-            return value
-    return None
-
-
-def _client_ip(request: Request | None) -> str:
-    if request:
+    X-Forwarded-For is only trusted when the direct peer is a
+    loopback/private address (i.e. our reverse proxy). Otherwise a client
+    could rotate the header and reset its own bucket.
+    """
+    peer = request.client.host if request.client else "unknown"
+    try:
+        trusted_proxy = ipaddress.ip_address(peer).is_private or ipaddress.ip_address(peer).is_loopback
+    except ValueError:
+        # Non-IP peer names (e.g. FastAPI TestClient's "testclient")
+        trusted_proxy = True
+    if trusted_proxy:
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
-    return "unknown"
+            first = forwarded.split(",")[0].strip()
+            if first:
+                return first
+    return peer
+
+
+def rate_limit(max_requests: int, window_seconds: int = 60):
+    """FastAPI dependency factory: per-endpoint, per-client-IP rate limit.
+
+    Usage:
+        @router.post("/login", dependencies=[Depends(rate_limit(10, 60))])
+    """
+    def dependency(request: Request) -> None:
+        route = request.scope.get("route")
+        endpoint_key = getattr(route, "path", request.url.path)
+        key = f"{endpoint_key}:{_client_ip(request)}"
+        if not limiter.check(key, max_requests, window_seconds):
+            raise HTTPException(
+                status_code=429,
+                detail=f"Juda ko'p so'rov. Iltimos {window_seconds} soniyadan keyin urinib ko'ring",
+            )
+
+    return dependency

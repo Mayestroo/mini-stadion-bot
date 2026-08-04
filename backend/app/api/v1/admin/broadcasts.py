@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.analytics import track_event
 from app.core.audit import write_audit
@@ -18,8 +18,7 @@ from app.schemas.notification import BroadcastCreate, BroadcastRecipientResponse
 router = APIRouter(prefix="/admin", tags=["Superadmin"])
 
 
-@router.post("/broadcasts/preview")
-@rate_limit(max_requests=30, window_seconds=60)
+@router.post("/broadcasts/preview", dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
 def preview_broadcast_targets(
     data: BroadcastCreate,
     db: Session = Depends(get_db),
@@ -38,8 +37,7 @@ def get_broadcasts(
     return db.query(Broadcast).order_by(Broadcast.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
-@router.post("/broadcasts", response_model=BroadcastResponse)
-@rate_limit(max_requests=5, window_seconds=60)
+@router.post("/broadcasts", response_model=BroadcastResponse, dependencies=[Depends(rate_limit(max_requests=5, window_seconds=60))])
 def create_broadcast_message(
     data: BroadcastCreate,
     db: Session = Depends(get_db),
@@ -75,8 +73,7 @@ def create_broadcast_message(
     return broadcast
 
 
-@router.post("/broadcasts/{broadcast_id}/retry-failed", response_model=BroadcastResponse)
-@rate_limit(max_requests=10, window_seconds=60)
+@router.post("/broadcasts/{broadcast_id}/retry-failed", response_model=BroadcastResponse, dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def retry_broadcast_failed(
     broadcast_id: int,
     db: Session = Depends(get_db),
@@ -106,7 +103,7 @@ def get_broadcast_recipients(
     broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
     if not broadcast:
         raise HTTPException(status_code=404, detail="Xabar topilmadi")
-    recipients = db.query(BroadcastRecipient).filter(BroadcastRecipient.broadcast_id == broadcast.id).order_by(BroadcastRecipient.status.asc(), BroadcastRecipient.id.asc()).offset(skip).limit(min(limit, 100)).all()
+    recipients = db.query(BroadcastRecipient).options(joinedload(BroadcastRecipient.user)).filter(BroadcastRecipient.broadcast_id == broadcast.id).order_by(BroadcastRecipient.status.asc(), BroadcastRecipient.id.asc()).offset(skip).limit(min(limit, 100)).all()
     return [
         {
             "id": item.id,

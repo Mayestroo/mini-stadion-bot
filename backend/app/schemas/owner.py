@@ -22,6 +22,8 @@ class OwnerChangePassword(BaseModel):
     def validate_new_password(cls, value):
         if len(value) < 8:
             raise ValueError("Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Parol 72 belgidan oshmasligi kerak")
         if not re.search(r"[A-Z]", value):
             raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
         if not re.search(r"[a-z]", value):
@@ -43,6 +45,8 @@ class OwnerCreate(BaseModel):
     def validate_temporary_password(cls, value):
         if len(value) < 8:
             raise ValueError("Vaqtinchalik parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Parol 72 belgidan oshmasligi kerak")
         if not re.search(r"[A-Z]", value):
             raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
         if not re.search(r"[a-z]", value):
@@ -72,6 +76,19 @@ class OwnerStats(BaseModel):
     monthly_revenue: int
     active_stadiums: int
     pending_moderation: int
+
+
+class OwnerCustomerResponse(BaseModel):
+    """Safe public projection of a customer for the owner panel.
+
+    Never expose the full User model: it contains hashed_password,
+    failed_login_attempts, locked_until and other sensitive columns.
+    """
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str
+    phone: Optional[str]
 
 
 class StadiumDraftCreate(StadiumCreate):

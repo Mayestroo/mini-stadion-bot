@@ -13,7 +13,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint("uq_booking_slot", "bookings", ["stadium_id", "date", "start_time"])
+    # Guarded: safe on fresh DBs where create_all already added the constraint.
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_booking_slot') THEN
+                ALTER TABLE bookings ADD CONSTRAINT uq_booking_slot UNIQUE (stadium_id, date, start_time);
+            END IF;
+        END $$
+    """)
 
 
 def downgrade() -> None:

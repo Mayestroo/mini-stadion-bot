@@ -1,6 +1,7 @@
 export * from "./client";
 export * from "./auth";
 export * from "./stadiums";
+export * from "./trainings";
 export * from "./bookings";
 export * from "./owner";
 export * from "./admin";

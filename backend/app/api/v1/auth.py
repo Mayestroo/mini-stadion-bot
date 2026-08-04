@@ -31,7 +31,9 @@ def _set_auth_cookie(response: Response, token: str) -> None:
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=3600,
+        # Keep cookie lifetime in sync with the JWT expiry — previously the
+        # cookie died after 1h while the token stayed valid for 30 days.
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
 
@@ -59,8 +61,7 @@ def _reset_login_attempts(db: Session, user: User) -> None:
     db.commit()
 
 
-@router.post("/register", response_model=TokenResponse)
-@rate_limit(max_requests=5, window_seconds=300)
+@router.post("/register", response_model=TokenResponse, dependencies=[Depends(rate_limit(max_requests=5, window_seconds=300))])
 def register(user_data: UserCreate, response: Response, db: Session = Depends(get_db)):
     if db.query(User).filter(User.phone == user_data.phone).first():
         raise HTTPException(status_code=400, detail="Bu telefon raqam allaqachon ro'yxatdan o'tgan")
@@ -74,55 +75,56 @@ def register(user_data: UserCreate, response: Response, db: Session = Depends(ge
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "tv": user.token_version})
     track_event(db, "user_register", user_id=user.id)
     db.commit()
     _set_auth_cookie(response, token)
     return {"access_token": token, "user": user}
 
 
-@router.post("/login", response_model=TokenResponse)
-@rate_limit(max_requests=10, window_seconds=60)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def login(credentials: UserLogin, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.phone == credentials.phone).first()
+    # Check the lockout before verifying the password so a locked account
+    # cannot be used as a password-correctness oracle.
+    if user:
+        _check_account_locked(user)
     if not user or not verify_password(credentials.password, user.hashed_password):
         if user:
             _record_failed_attempt(db, user)
         raise HTTPException(status_code=401, detail="Telefon yoki parol noto'g'ri")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Hisob faol emas")
-    _check_account_locked(user)
 
     _reset_login_attempts(db, user)
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "tv": user.token_version})
     track_event(db, "user_login", telegram_id=user.telegram_id, user_id=user.id)
     db.commit()
     _set_auth_cookie(response, token)
     return {"access_token": token, "user": user}
 
 
-@router.post("/owner-login", response_model=TokenResponse)
-@rate_limit(max_requests=10, window_seconds=60)
+@router.post("/owner-login", response_model=TokenResponse, dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def owner_login(credentials: OwnerLogin, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.owner_login == credentials.owner_login).first()
+    if user and user.role == UserRole.owner:
+        _check_account_locked(user)
     if not user or user.role != UserRole.owner or not verify_password(credentials.password, user.hashed_password):
         if user:
             _record_failed_attempt(db, user)
         raise HTTPException(status_code=401, detail="Login yoki parol noto'g'ri")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Owner hisobi faol emas")
-    _check_account_locked(user)
 
     _reset_login_attempts(db, user)
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "tv": user.token_version})
     track_event(db, "owner_login", telegram_id=user.telegram_id, user_id=user.id)
     db.commit()
     _set_auth_cookie(response, token)
     return {"access_token": token, "user": user}
 
 
-@router.post("/owner-change-password", response_model=PrivateUserResponse)
-@rate_limit(max_requests=5, window_seconds=300)
+@router.post("/owner-change-password", response_model=PrivateUserResponse, dependencies=[Depends(rate_limit(max_requests=5, window_seconds=300))])
 def owner_change_password(
     password_data: OwnerChangePassword,
     db: Session = Depends(get_db),
@@ -135,6 +137,8 @@ def owner_change_password(
 
     current_user.hashed_password = get_password_hash(password_data.new_password)
     current_user.must_change_password = False
+    # Invalidate every session/token issued before this password change.
+    current_user.token_version = (current_user.token_version or 0) + 1
     db.commit()
     db.refresh(current_user)
     return current_user
@@ -143,10 +147,12 @@ def owner_change_password(
 class TelegramAuthRequest(BaseModel):
     init_data: str
     phone: Optional[str] = None
+    # Required only when `phone` belongs to an existing account:
+    # proves ownership of that account before linking a Telegram identity.
+    password: Optional[str] = None
 
 
-@router.post("/telegram-auth")
-@rate_limit(max_requests=10, window_seconds=60)
+@router.post("/telegram-auth", dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def telegram_auth(
     body: TelegramAuthRequest,
     response: Response,
@@ -185,6 +191,14 @@ def telegram_auth(
 
     if not user:
         if normalized_phone and phone_owner:
+            # Linking a Telegram identity to an existing phone account must
+            # prove account ownership, otherwise anyone could take over an
+            # account just by knowing its phone number.
+            if not body.password or not verify_password(body.password, phone_owner.hashed_password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bu telefon raqamga ega hisob allaqachon mavjud. Ulanish uchun hisob parolini ham kiriting",
+                )
             user = phone_owner
             user.telegram_id = telegram_id
             user.telegram_username = username
@@ -224,7 +238,7 @@ def telegram_auth(
         db.commit()
         db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "tv": user.token_version})
     track_event(db, "miniapp_auth", telegram_id=telegram_id, user_id=user.id)
     db.commit()
     _set_auth_cookie(response, token)

@@ -27,6 +27,7 @@ from app.models.moderation import (
 )
 from app.models.notification import NotificationType
 from app.models.stadium import Stadium
+from app.models.training import Training, TrainingDraft, TrainingDraftType
 from app.models.user import User
 from app.schemas.booking import BookingResponse
 from app.schemas.notification import NotificationListResponse
@@ -35,11 +36,18 @@ from app.schemas.owner import (
     BookingCancelRequestResponse,
     ImageDraftCreate,
     ImageDraftResponse,
+    OwnerCustomerResponse,
     OwnerMe,
     OwnerStats,
     StadiumDraftCreate,
     StadiumDraftResponse,
     StadiumDraftUpdate,
+)
+from app.schemas.training import (
+    TrainingDraftCreate,
+    TrainingDraftResponse,
+    TrainingDraftUpdate,
+    TrainingResponse,
 )
 
 router = APIRouter(prefix="/owner", tags=["Owner"])
@@ -69,6 +77,26 @@ STADIUM_DRAFT_FIELDS = [
     "open_time",
     "close_time",
     "working_days",
+    "cover_image",
+    "images",
+]
+
+TRAINING_DRAFT_FIELDS = [
+    "title",
+    "sport",
+    "description",
+    "coach_name",
+    "schedule_text",
+    "price_text",
+    "age_group",
+    "stadium_id",
+    "address",
+    "district",
+    "latitude",
+    "longitude",
+    "phone",
+    "telegram",
+    "instagram",
     "cover_image",
     "images",
 ]
@@ -255,6 +283,164 @@ def create_image_draft(
     return draft
 
 
+# ---------- Trainings (mashg'ulotlar) ----------
+
+
+def _check_owner_stadium(db: Session, owner: User, stadium_id: Optional[int]) -> None:
+    if stadium_id is None:
+        return
+    stadium = db.query(Stadium).filter(Stadium.id == stadium_id, Stadium.owner_id == owner.id).first()
+    if not stadium:
+        raise HTTPException(status_code=404, detail="Stadion topilmadi")
+
+
+@router.get("/stadiums")
+def get_owner_stadiums(
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    stadiums = (
+        db.query(Stadium)
+        .filter(Stadium.owner_id == owner.id, Stadium.is_active == True)
+        .order_by(Stadium.name)
+        .all()
+    )
+    return [{"id": s.id, "name": s.name, "district": s.district, "address": s.address} for s in stadiums]
+
+
+@router.get("/trainings", response_model=List[TrainingResponse])
+def get_owner_trainings(
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    trainings = (
+        db.query(Training)
+        .filter(Training.owner_id == owner.id)
+        .order_by(Training.created_at.desc())
+        .all()
+    )
+    return [TrainingResponse.from_model(t) for t in trainings]
+
+
+@router.get("/training-drafts", response_model=List[TrainingDraftResponse])
+def get_training_drafts(
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    return db.query(TrainingDraft).filter(TrainingDraft.owner_id == owner.id).order_by(TrainingDraft.created_at.desc()).all()
+
+
+@router.post("/training-drafts", response_model=TrainingDraftResponse)
+def create_training_draft(
+    draft_data: TrainingDraftCreate,
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    _check_owner_stadium(db, owner, draft_data.stadium_id)
+    draft = TrainingDraft(
+        **draft_data.model_dump(),
+        owner_id=owner.id,
+        draft_type=TrainingDraftType.create,
+        status=ModerationStatus.pending,
+        submitted_at=datetime.now(timezone.utc),
+        images=[],
+    )
+    db.add(draft)
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
+@router.put("/training-drafts/{draft_id}", response_model=TrainingDraftResponse)
+def update_training_draft(
+    draft_id: int,
+    draft_data: TrainingDraftUpdate,
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    draft = db.query(TrainingDraft).filter(TrainingDraft.id == draft_id, TrainingDraft.owner_id == owner.id).first()
+    if not draft:
+        raise HTTPException(status_code=404, detail="Draft topilmadi")
+    if draft.status == ModerationStatus.approved:
+        raise HTTPException(status_code=400, detail="Tasdiqlangan draftni tahrirlab bo'lmaydi")
+
+    updates = draft_data.model_dump(exclude_none=True)
+    if "stadium_id" in updates:
+        _check_owner_stadium(db, owner, updates["stadium_id"])
+    for field, value in updates.items():
+        setattr(draft, field, value)
+    draft.status = ModerationStatus.pending
+    draft.submitted_at = datetime.now(timezone.utc)
+    draft.review_note = None
+    draft.reviewed_by = None
+    draft.reviewed_at = None
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
+@router.post("/trainings/{training_id}/draft", response_model=TrainingDraftResponse)
+def create_training_update_draft(
+    training_id: int,
+    draft_data: TrainingDraftUpdate,
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    training = db.query(Training).filter(Training.id == training_id, Training.owner_id == owner.id).first()
+    if not training:
+        raise HTTPException(status_code=404, detail="Mashg'ulot topilmadi")
+
+    data = {field: getattr(training, field) for field in TRAINING_DRAFT_FIELDS}
+    updates = draft_data.model_dump(exclude_none=True)
+    if "stadium_id" in updates:
+        _check_owner_stadium(db, owner, updates["stadium_id"])
+    data.update(updates)
+    draft = TrainingDraft(
+        **data,
+        owner_id=owner.id,
+        training_id=training.id,
+        draft_type=TrainingDraftType.update,
+        status=ModerationStatus.pending,
+        submitted_at=datetime.now(timezone.utc),
+    )
+    db.add(draft)
+    db.commit()
+    db.refresh(draft)
+    return draft
+
+
+@router.post("/trainings/{training_id}/deactivate", response_model=TrainingResponse)
+def deactivate_training(
+    training_id: int,
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    training = db.query(Training).filter(Training.id == training_id, Training.owner_id == owner.id).first()
+    if not training:
+        raise HTTPException(status_code=404, detail="Mashg'ulot topilmadi")
+    training.is_active = False
+    track_event(db, "owner_training_deactivated", telegram_id=owner.telegram_id, user_id=owner.id, metadata={"training_id": training.id})
+    db.commit()
+    db.refresh(training)
+    return TrainingResponse.from_model(training)
+
+
+@router.post("/trainings/{training_id}/activate", response_model=TrainingResponse)
+def activate_training(
+    training_id: int,
+    db: Session = Depends(get_db),
+    owner: User = Depends(get_current_owner),
+):
+    training = db.query(Training).filter(Training.id == training_id, Training.owner_id == owner.id).first()
+    if not training:
+        raise HTTPException(status_code=404, detail="Mashg'ulot topilmadi")
+    training.is_active = True
+    track_event(db, "owner_training_activated", telegram_id=owner.telegram_id, user_id=owner.id, metadata={"training_id": training.id})
+    db.commit()
+    db.refresh(training)
+    return TrainingResponse.from_model(training)
+
+
 @router.get("/bookings", response_model=List[BookingResponse])
 def get_owner_bookings(
     stadium_id: Optional[int] = None,
@@ -349,7 +535,7 @@ def request_booking_cancel(
     return request
 
 
-@router.get("/customers")
+@router.get("/customers", response_model=List[OwnerCustomerResponse])
 def get_owner_customers(
     db: Session = Depends(get_db),
     owner: User = Depends(get_current_owner),

@@ -24,7 +24,7 @@ services:
     build: ./backend
     container_name: sportly_backend
     restart: unless-stopped
-    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 30"
+    command: sh -c "python -c 'from app.core.database import Base, engine; from app import models; Base.metadata.create_all(bind=engine)' && alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 30"
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
@@ -59,7 +59,7 @@ services:
       backend:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,sys; sys.exit(0 if os.path.exists('/app/app/worker.py') else 1)"]
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(0 if os.path.exists('/tmp/sportly_worker_heartbeat') and time.time()-os.path.getmtime('/tmp/sportly_worker_heartbeat')<60 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3

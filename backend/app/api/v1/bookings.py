@@ -5,17 +5,18 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.core.analytics import track_event
 from app.core.dependencies import get_current_user, get_current_admin
+from app.core.ratelimit import rate_limit
 from app.models.booking import Booking, BookingStatus
 from app.models.notification import NotificationType
 from app.models.user import User, UserRole
 from app.schemas.booking import BookingCreate, BookingStatusUpdate, BookingResponse
-from app.services.bookings import booking_summary, create_booking as create_booking_service, notify_booking_status_changed
+from app.services.bookings import adjust_total_bookings, booking_summary, create_booking as create_booking_service, notify_booking_status_changed
 from app.services.notifications import notify_admins
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 
-@router.post("/", response_model=BookingResponse)
+@router.post("/", response_model=BookingResponse, dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def create_booking(
     booking_data: BookingCreate,
     db: Session = Depends(get_db),
@@ -49,7 +50,7 @@ def get_all_bookings(
     query = db.query(Booking).options(joinedload(Booking.stadium), joinedload(Booking.user))
     if status:
         query = query.filter(Booking.status == status)
-    bookings = query.order_by(Booking.created_at.desc()).offset(skip).limit(limit).all()
+    bookings = query.order_by(Booking.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
     return [BookingResponse.from_model(b) for b in bookings]
 
 
@@ -64,6 +65,8 @@ def update_booking_status(
     if not booking:
         raise HTTPException(status_code=404, detail="Bron topilmadi")
 
+    if update_data.status == BookingStatus.cancelled and booking.status != BookingStatus.cancelled:
+        adjust_total_bookings(db, booking.stadium_id, -1)
     booking.status = update_data.status
     if update_data.admin_note:
         booking.admin_note = update_data.admin_note
@@ -104,6 +107,7 @@ def cancel_booking(
         raise HTTPException(status_code=400, detail="Bekor qilib bo'lmaydi")
 
     booking.status = BookingStatus.cancelled
+    adjust_total_bookings(db, booking.stadium_id, -1)
     track_event(db, "booking_cancelled_by_user", telegram_id=current_user.telegram_id, user_id=current_user.id, metadata={"booking_id": booking.id})
     db.commit()
     db.refresh(booking)

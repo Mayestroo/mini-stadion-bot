@@ -32,6 +32,7 @@ class User(Base):
     avatar_url = Column(String(300), nullable=True)
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
+    token_version = Column(Integer, default=0, nullable=False, server_default="0")
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
@@ -40,4 +41,6 @@ class User(Base):
     stadium_drafts = relationship("StadiumDraft", back_populates="owner", lazy="dynamic", foreign_keys="StadiumDraft.owner_id")
     image_drafts = relationship("StadiumImageDraft", back_populates="owner", lazy="dynamic", foreign_keys="StadiumImageDraft.owner_id")
     booking_cancel_requests = relationship("BookingCancelRequest", back_populates="owner", lazy="dynamic", foreign_keys="BookingCancelRequest.owner_id")
+    trainings = relationship("Training", back_populates="owner", lazy="dynamic", foreign_keys="Training.owner_id")
+    training_drafts = relationship("TrainingDraft", back_populates="owner", lazy="dynamic", foreign_keys="TrainingDraft.owner_id")
     notifications = relationship("Notification", back_populates="user", lazy="dynamic")

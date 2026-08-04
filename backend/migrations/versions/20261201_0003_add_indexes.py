@@ -13,9 +13,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_index("ix_users_role_active", "users", ["role", "is_active"])
-    op.create_index("ix_stadiums_active_featured", "stadiums", ["is_active", "is_featured"])
-    op.create_index("ix_bookings_stadium_date_status", "bookings", ["stadium_id", "date", "status"])
+    # IF NOT EXISTS: safe on fresh DBs where create_all already made these.
+    op.execute("CREATE INDEX IF NOT EXISTS ix_users_role_active ON users(role, is_active)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_stadiums_active_featured ON stadiums(is_active, is_featured)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_bookings_stadium_date_status ON bookings(stadium_id, date, status)")
 
 
 def downgrade() -> None:

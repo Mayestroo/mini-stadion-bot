@@ -2,7 +2,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { authApi } from "@/lib/api";
+import { authApi, safeRedirect } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
 export default function LoginPage() {
@@ -30,7 +30,7 @@ function LoginContent() {
     try {
       const data = await authApi.login({ phone, password });
       login(data.user);
-      router.push(searchParams.get("redirect") || "/");
+      router.push(safeRedirect(searchParams.get("redirect")));
     } catch (err: any) {
       setError(err.response?.data?.detail || "Xatolik yuz berdi");
     } finally {

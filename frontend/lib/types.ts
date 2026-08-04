@@ -112,6 +112,65 @@ export interface BookingCancelRequest {
   reviewed_at?: string;
 }
 
+export interface Training {
+  id: number;
+  owner_id?: number;
+  stadium_id?: number;
+  title: string;
+  slug: string;
+  sport: string;
+  description?: string;
+  coach_name?: string;
+  schedule_text?: string;
+  price_text?: string;
+  age_group?: string;
+  address: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+  phone: string;
+  telegram?: string;
+  instagram?: string;
+  cover_image?: string;
+  images: string[];
+  is_active: boolean;
+  is_featured: boolean;
+  created_at: string;
+  stadium_name?: string;
+  stadium_slug?: string;
+}
+
+export interface TrainingDraft {
+  id: number;
+  owner_id: number;
+  training_id?: number;
+  stadium_id?: number;
+  draft_type: "create" | "update";
+  status: "draft" | "pending" | "approved" | "rejected";
+  title: string;
+  sport: string;
+  description?: string;
+  coach_name?: string;
+  schedule_text?: string;
+  price_text?: string;
+  age_group?: string;
+  address?: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
+  phone?: string;
+  telegram?: string;
+  instagram?: string;
+  cover_image?: string;
+  images: string[];
+  reviewed_by?: number;
+  review_note?: string;
+  created_at: string;
+  updated_at: string;
+  submitted_at?: string;
+  reviewed_at?: string;
+}
+
 export interface AdminStatistics {
   revenue: Record<string, number>;
   booking_statuses: Record<string, number>;

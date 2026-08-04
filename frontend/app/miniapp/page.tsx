@@ -6,11 +6,11 @@ import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
 import { stadiumApi } from "@/lib/api";
 import { MiniStadiumCard } from "@/components/miniapp/MiniStadiumCard";
-import { CalendarCheck, MapPinned, ShieldCheck } from "lucide-react";
+import { CalendarCheck, Dumbbell, MapPinned, ShieldCheck } from "lucide-react";
 
 export default function MiniAppHome() {
   const router = useRouter();
-  const { theme, ready } = useTelegram();
+  const { ready } = useTelegram();
   const { isAuthenticated, user, hydrated } = useAuthStore();
   const isAdminRole = user?.role === "superadmin" || user?.role === "moderator";
 
@@ -19,8 +19,6 @@ export default function MiniAppHome() {
     queryFn: () => stadiumApi.getAll({ limit: 5, featured: true }),
     enabled: isAuthenticated,
   });
-
-  const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";
 
   if (!ready || !hydrated) {
     return (
@@ -85,6 +83,7 @@ export default function MiniAppHome() {
       <div className="mini-home-actions" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 22 }}>
         <ActionCard icon={<MapPinned size={22} />} title="Stadionlar" subtitle="Yaqindagilar" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
         <ActionCard icon={<CalendarCheck size={22} />} title="Bronlarim" subtitle="Rejalar" onClick={() => router.push("/miniapp/bookings")} tone="blue" />
+        <ActionCard icon={<Dumbbell size={22} />} title="Mashg'ulotlar" subtitle="Treninglar" onClick={() => router.push("/miniapp/trainings")} tone="green" />
       </div>
 
       <div className="mini-title-row">

@@ -1,7 +1,10 @@
 import os
-os.environ["DATABASE_URL"] = "sqlite:///./test.db"
-os.environ["SECRET_KEY"] = "test-secret-key-for-tests"
-os.environ["ALLOWED_ORIGINS"] = "*"
+# Skips placeholder-secret validation in Settings (app.core.config).
+os.environ["ENV"] = "test"
+# Respect CI's Postgres service when available; fall back to local SQLite.
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-tests")
+os.environ.setdefault("ALLOWED_ORIGINS", "*")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,9 +15,10 @@ from app.core.security import get_password_hash
 from app.models.user import User
 from main import app
 
-TEST_DATABASE_URL = "sqlite:///./test.db"
+TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+_connect_args = {"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(TEST_DATABASE_URL, connect_args=_connect_args)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

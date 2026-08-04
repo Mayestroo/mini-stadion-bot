@@ -9,6 +9,7 @@ import { Ban } from "lucide-react";
 
 const moderationTabs = [
   { href: "/admin/moderation/stadiums", label: "Stadionlar" },
+  { href: "/admin/moderation/trainings", label: "Mashg'ulotlar" },
   { href: "/admin/moderation/images", label: "Rasmlar" },
   { href: "/admin/moderation/cancellations", label: "Bekor qilish" },
 ];

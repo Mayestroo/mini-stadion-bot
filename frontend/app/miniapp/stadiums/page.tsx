@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useTelegram } from "@/components/miniapp/TelegramProvider";
@@ -11,10 +11,17 @@ export default function MiniStadiumsPage() {
   const router = useRouter();
   const { theme } = useTelegram();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce: one request per pause in typing instead of one per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const { data: stadiums = [] } = useQuery({
-    queryKey: ["miniapp-stadiums-list", search],
-    queryFn: () => stadiumApi.getAll({ search: search || undefined, limit: 50 }),
+    queryKey: ["miniapp-stadiums-list", debouncedSearch],
+    queryFn: () => stadiumApi.getAll({ search: debouncedSearch || undefined, limit: 50 }),
   });
 
   const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";

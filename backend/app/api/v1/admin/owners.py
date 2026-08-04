@@ -25,8 +25,7 @@ def get_owners(
     return db.query(User).filter(User.role == UserRole.owner).order_by(User.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
-@router.post("/owners", response_model=AdminUserResponse)
-@rate_limit(max_requests=20, window_seconds=60)
+@router.post("/owners", response_model=AdminUserResponse, dependencies=[Depends(rate_limit(max_requests=20, window_seconds=60))])
 def create_owner(
     owner_data: OwnerCreate,
     db: Session = Depends(get_db),
@@ -77,8 +76,7 @@ def create_owner(
     return owner
 
 
-@router.patch("/owners/{owner_id}", response_model=AdminUserResponse)
-@rate_limit(max_requests=30, window_seconds=60)
+@router.patch("/owners/{owner_id}", response_model=AdminUserResponse, dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
 def update_owner(
     owner_id: int,
     owner_data: OwnerUpdate,
@@ -102,6 +100,8 @@ def update_owner(
         if not verify_password(owner_data.temporary_password, owner.hashed_password):
             owner.hashed_password = get_password_hash(owner_data.temporary_password)
             owner.must_change_password = True
+            # Invalidate all sessions issued before the password reset.
+            owner.token_version = (owner.token_version or 0) + 1
 
     write_audit(db, "owner_updated", superadmin, "user", owner.id, owner_data.model_dump(exclude_none=True, exclude={"temporary_password"}))
     db.commit()

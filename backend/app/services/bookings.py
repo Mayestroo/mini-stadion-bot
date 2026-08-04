@@ -3,6 +3,7 @@ import string
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
+from sqlalchemy import case, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -49,10 +50,17 @@ def validate_booking_time(stadium: Stadium, booking_data: BookingCreate) -> None
 
 
 def create_booking(db: Session, current_user: User, booking_data: BookingCreate) -> Booking:
-    stadium = db.query(Stadium).filter(
+    # Lock the stadium row for the duration of the transaction so concurrent
+    # booking requests for the same stadium are serialized. Without this,
+    # overlapping ranges (e.g. 18:00-19:00 vs 18:30-19:30) both pass the
+    # conflict check below and double-book.
+    stadium_query = db.query(Stadium).filter(
         Stadium.id == booking_data.stadium_id,
         Stadium.is_active == True
-    ).first()
+    )
+    if db.bind is not None and db.bind.dialect.name == "postgresql":
+        stadium_query = stadium_query.with_for_update()
+    stadium = stadium_query.first()
     if not stadium:
         raise HTTPException(status_code=404, detail="Stadion topilmadi")
 
@@ -86,7 +94,8 @@ def create_booking(db: Session, current_user: User, booking_data: BookingCreate)
             note=booking_data.note,
         )
         db.add(booking)
-        stadium.total_bookings += 1
+        # Atomic SQL-level increment (avoids lost updates).
+        adjust_total_bookings(db, stadium.id, +1)
         track_event(db, "booking_created", telegram_id=current_user.telegram_id, user_id=current_user.id, metadata={"stadium_id": stadium.id, "total_price": total_price})
         db.commit()
     except HTTPException:
@@ -100,6 +109,19 @@ def create_booking(db: Session, current_user: User, booking_data: BookingCreate)
     db.commit()
 
     return booking
+
+
+def adjust_total_bookings(db: Session, stadium_id: int, delta: int) -> None:
+    """Atomic SQL-level adjustment; clamps at zero."""
+    db.query(Stadium).filter(Stadium.id == stadium_id).update(
+        {
+            Stadium.total_bookings: case(
+                (func.coalesce(Stadium.total_bookings, 0) + delta < 0, 0),
+                else_=func.coalesce(Stadium.total_bookings, 0) + delta,
+            )
+        },
+        synchronize_session=False,
+    )
 
 
 def booking_summary(booking: Booking) -> str:

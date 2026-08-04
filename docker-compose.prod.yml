@@ -34,6 +34,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
     networks:
       sportly_internal:
       ielts_proxy:
@@ -55,7 +61,8 @@ services:
       backend:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import os,sys; sys.exit(0 if os.path.exists('/app/app/worker.py') else 1)"]
+      # Real liveness: worker touches a heartbeat file every loop iteration.
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(0 if os.path.exists('/tmp/sportly_worker_heartbeat') and time.time()-os.path.getmtime('/tmp/sportly_worker_heartbeat')<60 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -80,6 +87,12 @@ services:
       - .env
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000',r=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       ielts_proxy:
         aliases:

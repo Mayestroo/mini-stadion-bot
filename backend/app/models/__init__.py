@@ -1,5 +1,6 @@
 from app.models.user import User, UserRole
 from app.models.stadium import Stadium
+from app.models.training import Training, TrainingDraft, TrainingDraftType
 from app.models.booking import Booking, BookingStatus
 from app.models.analytics import AnalyticsEvent
 from app.models.audit import AuditLog
@@ -25,6 +26,9 @@ __all__ = [
     "User",
     "UserRole",
     "Stadium",
+    "Training",
+    "TrainingDraft",
+    "TrainingDraftType",
     "Booking",
     "BookingStatus",
     "AnalyticsEvent",

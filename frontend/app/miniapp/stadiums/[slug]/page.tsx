@@ -1,6 +1,8 @@
 "use client";
 import { useTelegram } from "@/components/miniapp/TelegramProvider";
-import { bookingApi, getImageUrl, stadiumApi } from "@/lib/api";
+import { bookingApi, getImageUrl, stadiumApi, trainingApi } from "@/lib/api";
+import { Training } from "@/lib/types";
+import { sportLabel } from "@/lib/sports";
 import { formatPrice } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
@@ -8,8 +10,10 @@ import {
   ArrowLeft,
   CalendarCheck,
   ChevronDown,
+  ChevronRight,
   CircleCheck,
   Clock,
+  Dumbbell,
   ExternalLink,
   MapPin,
   Navigation,
@@ -49,6 +53,12 @@ export default function MiniStadiumDetail() {
     queryKey: ["quote", stadium?.id, selectedDate, selectedStart, selectedEnd],
     queryFn: () => stadiumApi.getQuote(stadium!.id, { date: selectedDate, start_time: selectedStart, end_time: selectedEnd }),
     enabled: !!stadium && !!selectedDate && !!selectedStart && !!selectedEnd,
+  });
+
+  const { data: stadiumTrainings = [] } = useQuery<Training[]>({
+    queryKey: ["stadium-trainings", stadium?.id],
+    queryFn: () => trainingApi.getAll({ stadium_id: stadium!.id, limit: 20 }),
+    enabled: !!stadium,
   });
 
   const monthNames = ["Yan", "Fev", "Mar", "Apr", "May", "Iyun", "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek"];
@@ -257,6 +267,33 @@ export default function MiniStadiumDetail() {
             </a>
           )}
         </Section>
+
+        {/* Trainings at this venue */}
+        {stadiumTrainings.length > 0 && (
+          <Section label="Mashg'ulotlar">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {stadiumTrainings.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => router.push(`/miniapp/trainings/${t.slug}`)}
+                  className="mini-pressable"
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 13px", borderRadius: 14, border: "1px solid var(--mini-line)", background: "transparent", cursor: "pointer", textAlign: "left", width: "100%" }}
+                >
+                  <span className="mini-glyph mini-glyph-blue" style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0 }}>
+                    <Dumbbell size={17} />
+                  </span>
+                  <span style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: "var(--mini-text)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{t.title}</span>
+                    <span style={{ display: "block", fontSize: 12, color: "var(--mini-muted)", marginTop: 2 }}>
+                      {[sportLabel(t.sport), t.schedule_text].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} style={{ color: "var(--mini-faint)", flexShrink: 0 }} />
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Gallery */}
         {stadium.images && stadium.images.length > 0 && (

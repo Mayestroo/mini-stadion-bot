@@ -134,7 +134,7 @@ def verify_telegram_init_data(init_data: str, bot_token: str) -> dict | None:
         secret_key, data_check_string.encode(), hashlib.sha256
     ).hexdigest()
 
-    if computed_hash != hash_value:
+    if not hmac.compare_digest(computed_hash, hash_value):
         return None
 
     return parsed

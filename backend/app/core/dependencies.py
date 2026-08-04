@@ -1,11 +1,9 @@
-from datetime import datetime, timezone
-
-from fastapi import Cookie, Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from app.core.database import get_db, utcnow
+from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User, UserRole
 
@@ -29,14 +27,20 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Token yaroqsiz")
 
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Token yaroqsiz")
+
+    user = db.query(User).filter(User.id == user_id_int).first()
     if not user:
         raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Foydalanuvchi faol emas")
-    if user.locked_until and datetime.now(timezone.utc).replace(tzinfo=None) < user.locked_until:
-        remaining = int((user.locked_until - utcnow()).total_seconds() // 60)
-        raise HTTPException(status_code=423, detail=f"Hisob vaqtincha bloklangan. {remaining} daqiqadan keyin urinib ko'ring")
+    # Tokens issued before a password change carry the old token_version and
+    # are rejected here. Old tokens default to version 0 (pre-versioning).
+    if payload.get("tv", 0) != user.token_version:
+        raise HTTPException(status_code=401, detail="Token yaroqsiz, qaytadan kiring")
 
     return user
 

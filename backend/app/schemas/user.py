@@ -21,6 +21,9 @@ class UserCreate(BaseModel):
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("Parol kamida 8 ta belgidan iborat bo'lishi kerak")
+        if len(v.encode("utf-8")) > 72:
+            # bcrypt's hard input limit — anything longer would 500 on hash.
+            raise ValueError("Parol 72 belgidan oshmasligi kerak")
         if not re.search(r"[A-Z]", v):
             raise ValueError("Parolda kamida bitta katta harf bo'lishi kerak")
         if not re.search(r"[a-z]", v):

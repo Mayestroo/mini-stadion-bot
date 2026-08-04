@@ -3,7 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_superadmin
@@ -27,7 +27,7 @@ def get_audit_logs(
     superadmin: User = Depends(get_current_superadmin),
 ):
     limit = min(max(limit, 1), 200)
-    query = db.query(AuditLog)
+    query = db.query(AuditLog).options(joinedload(AuditLog.actor))
     if q:
         pattern = f"%{q.strip()}%"
         query = query.filter(or_(AuditLog.action.ilike(pattern), AuditLog.entity_type.ilike(pattern)))

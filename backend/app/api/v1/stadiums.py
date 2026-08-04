@@ -34,8 +34,8 @@ def get_stadiums(
     has_lighting: Optional[bool] = None,
     has_parking: Optional[bool] = None,
     featured: Optional[bool] = None,
-    skip: int = 0,
-    limit: int = 20,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     query = db.query(Stadium).filter(Stadium.is_active == True)

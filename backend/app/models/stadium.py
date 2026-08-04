@@ -56,6 +56,7 @@ class Stadium(Base):
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     bookings = relationship("Booking", back_populates="stadium", lazy="dynamic")
+    trainings = relationship("Training", back_populates="stadium", lazy="dynamic")
     owner = relationship("User", back_populates="stadiums", foreign_keys=[owner_id])
     drafts = relationship("StadiumDraft", back_populates="stadium", lazy="dynamic")
     image_drafts = relationship("StadiumImageDraft", back_populates="stadium", lazy="dynamic")
