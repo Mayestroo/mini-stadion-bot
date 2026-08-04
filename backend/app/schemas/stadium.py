@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
-from app.core.regions import is_valid_region
+from app.schemas.regions import is_valid_region
 
 ALLOWED_STADIUM_FIELDS = {
     "name", "description", "address", "region", "district", "latitude", "longitude",

@@ -8,7 +8,7 @@ from app.core.audit import write_audit
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
 from app.core.geo import haversine_km
-from app.core.regions import REGIONS
+from app.schemas.regions import REGIONS
 from app.models.stadium import Stadium
 from app.models.booking import Booking, BookingStatus
 from app.models.user import User, UserRole
