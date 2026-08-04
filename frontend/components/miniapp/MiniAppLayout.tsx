@@ -2,7 +2,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTelegram } from "./TelegramProvider";
-import { Bell, CalendarCheck, CircleUserRound, LogOut, MapPinned, Menu } from "lucide-react";
+import { Bell, CalendarCheck, CircleUserRound, Dumbbell, LogOut, MapPinned, Menu } from "lucide-react";
 import { notificationApi, authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { BackButton } from "@/components/common/BackButton";
@@ -10,7 +10,7 @@ import { BackButton } from "@/components/common/BackButton";
 const tabs = [
   { href: "/miniapp", label: "Stadionlar", icon: MapPinned },
   { href: "/miniapp/bookings", label: "Bronlarim", icon: CalendarCheck },
-  { href: "/miniapp/notifications", label: "Xabarlar", icon: Bell },
+  { href: "/miniapp/trainings", label: "Mashg'ulotlar", icon: Dumbbell },
 ];
 
 const moreItems = [
@@ -34,6 +34,9 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
     segments.length === 2 &&
     segments[1] !== "bookings" &&
     segments[1] !== "notifications";
+  // Notifications live in the top-right corner (with unread badge) instead of a
+  // tab — hidden on the notifications page itself and on detail pages.
+  const showBell = segments[0] === "miniapp" && segments.length <= 2 && pathname !== "/miniapp/notifications";
 
   useEffect(() => {
     if (!hydrated || !ready) return;
@@ -74,9 +77,25 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mini-app max-w-120 mx-auto min-h-screen relative shadow-2xl bg-white dark:bg-black" data-theme={theme}>
       <main className="mini-page">
-        {showBackButton ? (
-          <div style={{ display: "flex", marginBottom: 12 }}>
-            <BackButton />
+        {showBackButton || showBell ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            {showBackButton ? <BackButton /> : null}
+            {showBell ? (
+              <button
+                type="button"
+                onClick={() => router.push("/miniapp/notifications")}
+                aria-label="Xabarlar"
+                className="mini-card-solid mini-pressable"
+                style={{ width: 40, height: 40, borderRadius: 15, display: "grid", placeItems: "center", cursor: "pointer", flexShrink: 0, marginLeft: "auto", position: "relative", color: "var(--mini-text)" }}
+              >
+                <Bell size={19} />
+                {unreadCount > 0 ? (
+                  <span style={{ position: "absolute", top: -4, right: -4, minWidth: 17, height: 17, padding: "0 5px", borderRadius: 10, background: "var(--mini-red)", color: "white", fontSize: 10, fontWeight: 700, display: "grid", placeItems: "center" }}>
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {children}
@@ -128,12 +147,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => router.push(tab.href)}
                   className={`mini-tab mini-pressable${active ? " mini-tab-active" : ""}`}
                 >
-                  <span style={{ position: "relative", display: "inline-flex" }}>
-                    <Icon size={21} strokeWidth={active ? 2.6 : 2.1} />
-                    {tab.href === "/miniapp/notifications" && unreadCount > 0 ? (
-                      <span style={{ position: "absolute", top: -8, right: -10, minWidth: 17, height: 17, padding: "0 5px", borderRadius: 10, background: "var(--mini-red)", color: "white", fontSize: 10, display: "grid", placeItems: "center" }}>{unreadCount > 9 ? "9+" : unreadCount}</span>
-                    ) : null}
-                  </span>
+                  <Icon size={21} strokeWidth={active ? 2.6 : 2.1} />
                   {tab.label}
                 </button>
               );

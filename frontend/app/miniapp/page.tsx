@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth";
 import { useQuery } from "@tanstack/react-query";
 import { stadiumApi } from "@/lib/api";
 import { MiniStadiumCard } from "@/components/miniapp/MiniStadiumCard";
-import { CalendarCheck, Dumbbell, MapPinned, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 export default function MiniAppHome() {
   const router = useRouter();
@@ -66,11 +66,7 @@ export default function MiniAppHome() {
         </div>
       )}
 
-      <div className="mini-home-actions" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 22 }}>
-        <ActionCard icon={<MapPinned size={22} />} title="Stadionlar" subtitle="Yaqindagilar" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
-        <ActionCard icon={<CalendarCheck size={22} />} title="Bronlarim" subtitle="Rejalar" onClick={() => router.push("/miniapp/bookings")} tone="blue" />
-        <ActionCard icon={<Dumbbell size={22} />} title="Mashg'ulotlar" subtitle="Treninglar" onClick={() => router.push("/miniapp/trainings")} tone="green" />
-      </div>
+      {/* Asosiy bo'limlarga o'tish tabbar'da — bu yerda alohida cardlar kerak emas. */}
 
       <div className="mini-title-row">
         <div>
