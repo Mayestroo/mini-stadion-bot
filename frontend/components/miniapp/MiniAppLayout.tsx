@@ -26,14 +26,11 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const hideTabbar = pathname.startsWith("/miniapp/stadiums/");
   const moreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
-  // Back button only on inner list pages: tab roots navigate via the tabbar and
-  // detail pages carry their own floating back button over the hero image.
+  // Back button only on the stadiums list: tab roots navigate via the tabbar,
+  // trainings/profile open directly from menus, and detail pages carry their
+  // own floating back button over the hero image.
   const segments = pathname.split("/").filter(Boolean);
-  const showBackButton =
-    segments[0] === "miniapp" &&
-    segments.length === 2 &&
-    segments[1] !== "bookings" &&
-    segments[1] !== "notifications";
+  const showBackButton = segments[0] === "miniapp" && segments.length === 2 && segments[1] === "stadiums";
   // Notifications live in the top-right corner (with unread badge) instead of a
   // tab — hidden on the notifications page itself and on detail pages.
   const showBell = segments[0] === "miniapp" && segments.length <= 2 && pathname !== "/miniapp/notifications";
