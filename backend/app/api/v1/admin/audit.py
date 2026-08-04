@@ -1,20 +1,28 @@
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_superadmin
+from app.core.ratelimit import rate_limit
 from app.models.audit import AuditLog
 from app.models.user import User
 from app.schemas.audit import AuditLogResponse
+from app.schemas.common import Page
 
 router = APIRouter(prefix="/admin", tags=["Superadmin"])
 
 
-@router.get("/audit", response_model=List[AuditLogResponse])
+def _parse_date_param(value: str, name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.strip())
+    except ValueError:
+        raise HTTPException(status_code=422, detail=f"{name} noto'g'ri formatda (YYYY-MM-DD)")
+
+
+@router.get("/audit", response_model=Page[AuditLogResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_audit_logs(
     q: str | None = None,
     action: str | None = None,
@@ -36,11 +44,17 @@ def get_audit_logs(
     if actor_id:
         query = query.filter(AuditLog.actor_id == actor_id)
     if date_from:
-        query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+        start = _parse_date_param(date_from, "date_from")
+        query = query.filter(AuditLog.created_at >= start)
     if date_to:
-        query = query.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
+        end = _parse_date_param(date_to, "date_to")
+        if len(date_to.strip()) == 10:
+            # Date-only ("YYYY-MM-DD") means "until the end of that day".
+            end += timedelta(days=1)
+        query = query.filter(AuditLog.created_at < end)
+    total = query.count()
     logs = query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
-    return [
+    items = [
         {
             "id": log.id,
             "actor_id": log.actor_id,
@@ -53,3 +67,4 @@ def get_audit_logs(
         }
         for log in logs
     ]
+    return {"items": items, "total": total}

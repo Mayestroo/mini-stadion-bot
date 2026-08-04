@@ -4,17 +4,21 @@ import { useQuery } from "@tanstack/react-query";
 import { superadminApi } from "@/lib/api";
 import { AdminStatistics } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
-import { AdminCard, AdminEmptyState, AdminLoading, AdminShell } from "@/components/admin/AdminShell";
+import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
+import { AdminCard, AdminEmptyState, AdminErrorState, AdminLoading, AdminShell } from "@/components/admin/AdminShell";
 import { BarChart3 } from "lucide-react";
 
 export default function AdminStatisticsPage() {
-  const { data, isLoading, isError } = useQuery<AdminStatistics>({ queryKey: ["admin-statistics"], queryFn: superadminApi.getStatistics });
+  const isSuperadmin = useRequireSuperadmin();
+  // Backend already caches this expensive query for 60s — mirror that client-side.
+  const { data, isLoading, isError, refetch } = useQuery<AdminStatistics>({ queryKey: ["admin-statistics"], queryFn: superadminApi.getStatistics, staleTime: 30_000 });
 
+  if (!isSuperadmin) return null;
+  if (isError) {
+    return <AdminShell title="Statistika"><AdminErrorState text="Xatolik yuz berdi. Statistikani yuklab bo'lmadi." onRetry={() => refetch()} /></AdminShell>;
+  }
   if (isLoading || !data) {
     return <AdminShell title="Statistika"><AdminLoading /></AdminShell>;
-  }
-  if (isError) {
-    return <AdminShell title="Statistika"><AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Statistikani yuklab bo'lmadi.</p></AdminCard></AdminShell>;
   }
 
   const kpis = [
@@ -46,10 +50,20 @@ export default function AdminStatisticsPage() {
             {Object.entries(data.booking_statuses).map(([key, value]) => <Metric key={key} label={key} value={value} />)}
           </Panel>
 
+          <Panel title="Revenue dinamikasi (30 kun)">
+            <RevenueChart series={data.daily_revenue || []} />
+          </Panel>
+
           <Panel title="Conversion">
             <Metric label="Bot start" value={data.conversion.bot_start || 0} />
             <Metric label="Phone/auth" value={data.conversion.phone_or_auth || 0} />
             <Metric label="Booking" value={data.conversion.booking_created || 0} />
+            {data.conversion.bot_start > 0 ? (
+              <>
+                <Metric label="Bot → telefon" value={`${Math.round((data.conversion.phone_or_auth / data.conversion.bot_start) * 100)}%`} />
+                <Metric label="Bot → bron" value={`${Math.round((data.conversion.booking_created / data.conversion.bot_start) * 100)}%`} />
+              </>
+            ) : null}
           </Panel>
 
           <Panel title="Yangi userlar">
@@ -88,6 +102,35 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 
 function Empty() {
   return <AdminEmptyState icon={<BarChart3 size={24} />} title="Ma'lumot yo'q" text="Bu bo'lim uchun hali statistik ma'lumot shakllanmagan." />;
+}
+
+function RevenueChart({ series }: { series: Array<{ date: string; revenue: number }> }) {
+  if (!series.length) return <Empty />;
+  const max = Math.max(...series.map((d) => d.revenue), 1);
+  const total = series.reduce((sum, d) => sum + d.revenue, 0);
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110 }}>
+        {series.map((day) => (
+          <div
+            key={day.date}
+            title={`${day.date}: ${formatPrice(day.revenue)}`}
+            style={{
+              flex: 1,
+              height: `${Math.max((day.revenue / max) * 100, 3)}%`,
+              background: day.revenue > 0 ? "linear-gradient(180deg, #38d46a 0%, #30b95b 100%)" : "var(--mini-line)",
+              borderRadius: 4,
+            }}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11, color: "var(--mini-muted)" }}>
+        <span>{series[0].date.slice(5)}</span>
+        <span>Jami: <b style={{ color: "var(--mini-green)" }}>{formatPrice(total)}</b></span>
+        <span>{series[series.length - 1].date.slice(5)}</span>
+      </div>
+    </div>
+  );
 }
 
 function sumObject(values: Record<string, number>) {

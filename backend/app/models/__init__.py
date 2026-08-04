@@ -21,6 +21,7 @@ from app.models.notification import (
     Notification,
     NotificationType,
 )
+from app.models.settings import Setting
 
 __all__ = [
     "User",
@@ -46,4 +47,5 @@ __all__ = [
     "BroadcastRecipient",
     "BroadcastRecipientStatus",
     "BroadcastStatus",
+    "Setting",
 ]

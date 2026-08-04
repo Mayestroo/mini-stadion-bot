@@ -8,6 +8,7 @@ import os
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.maintenance import maintenance_middleware
 from app.core.migrations import run_migrations
 from app.api.router import api_router
 from app import models
@@ -61,6 +62,9 @@ async def add_security_headers(request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+app.middleware("http")(maintenance_middleware)
 
 
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

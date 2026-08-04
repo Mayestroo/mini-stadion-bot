@@ -2,7 +2,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
+import { superadminApi } from "@/lib/api";
+import { AdminStatistics } from "@/lib/types";
+import { formatPrice } from "@/lib/utils";
 import { AdminCard, AdminShell } from "@/components/admin/AdminShell";
 import { BarChart3, CalendarDays, ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, UserRound, Users, Warehouse } from "lucide-react";
 
@@ -16,9 +20,17 @@ export default function AdminDashboard() {
     }
   }, [hydrated, isAuthenticated, user, router]);
 
+  const stats = useQuery<AdminStatistics>({
+    queryKey: ["admin-statistics"],
+    queryFn: superadminApi.getStatistics,
+    enabled: user?.role === "superadmin",
+    staleTime: 30_000,
+  });
+
   if (!user) return null;
 
   const roleLabel = user.role === "superadmin" ? "Super Admin" : "Moderator";
+  const pendingTotal = stats.data ? Object.values(stats.data.pending_moderation).reduce((sum, v) => sum + v, 0) : null;
 
   return (
     <AdminShell title="Admin panel" subtitle="Boshqaruv va moderatsiya markazi">
@@ -41,6 +53,15 @@ export default function AdminDashboard() {
             {user.telegram_id ? <InfoRow icon={<MessageCircle size={16} />} label="Telegram ID" value={user.telegram_id} /> : null}
             <InfoRow icon={<ShieldCheck size={16} />} label="Rol" value={roleLabel} last />
           </div>
+
+          {user.role === "superadmin" && stats.data ? (
+            <div className="mini-responsive-grid-2">
+              <KpiLink href="/admin/moderation/stadiums" label="Pending moderatsiya" value={String(pendingTotal)} tone={pendingTotal && pendingTotal > 0 ? "orange" : undefined} />
+              <KpiLink href="/admin/statistics" label="Bugungi aylanma" value={formatPrice(stats.data.revenue.today || 0)} />
+              <KpiLink href="/admin/bronlar" label="Jami bronlar" value={String(stats.data.total_bookings)} />
+              <KpiLink href="/admin/statistics" label="Yangi userlar (oy)" value={String(stats.data.new_users.month || 0)} />
+            </div>
+          ) : null}
 
           <div className="mini-title-row" style={{ marginBottom: 0 }}>
             <div>
@@ -67,6 +88,16 @@ export default function AdminDashboard() {
           </p>
         </div>
     </AdminShell>
+  );
+}
+
+function KpiLink({ href, label, value, tone }: { href: string; label: string; value: string; tone?: "orange" }) {
+  const color = tone === "orange" ? "var(--mini-orange)" : "var(--mini-green)";
+  return (
+    <Link href={href} className="mini-card-solid mini-pressable" style={{ padding: 14, textDecoration: "none", color: "var(--mini-text)" }}>
+      <div style={{ color: "var(--mini-muted)", fontSize: 12, fontWeight: 700, minHeight: 30 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 850, letterSpacing: "-0.03em", marginTop: 6, color }}>{value}</div>
+    </Link>
   );
 }
 

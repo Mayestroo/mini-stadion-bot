@@ -2,9 +2,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { stadiumApi } from "@/lib/api";
+import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
 import { AdminButton, AdminCard, AdminInput, AdminSelect, AdminShell, AdminTextArea } from "@/components/admin/AdminShell";
 
 export default function NewStadium() {
+  const isSuperadmin = useRequireSuperadmin();
   const router = useRouter();
   const [form, setForm] = useState({
     name: "", address: "", phone: "", price_per_hour: 0,
@@ -38,6 +40,8 @@ export default function NewStadium() {
   };
 
   const updateField = (field: string, value: any) => setForm({ ...form, [field]: value });
+
+  if (!isSuperadmin) return null;
 
   return (
     <AdminShell title="Yangi stadion" subtitle="Stadionni bevosita public ro'yxatga qo'shish">

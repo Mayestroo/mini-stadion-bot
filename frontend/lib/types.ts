@@ -183,6 +183,7 @@ export interface AdminStatistics {
   top_by_bookings: Array<{ stadium_id: number; name: string; bookings: number }>;
   top_by_revenue: Array<{ stadium_id: number; name: string; revenue: number }>;
   pending_moderation: Record<string, number>;
+  daily_revenue: Array<{ date: string; revenue: number }>;
 }
 
 export interface TimeSlot {

@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { superadminApi } from "@/lib/api";
 import { BookingCancelRequest } from "@/lib/types";
-import { AdminButton, AdminCard, AdminEmptyState, AdminInput, AdminLoading, AdminShell, AdminStatusBadge, AdminSubTabs } from "@/components/admin/AdminShell";
+import { AdminCard, AdminEmptyState, AdminErrorState, AdminLoading, AdminShell, AdminStatusBadge, AdminStatusFilterToggle, AdminSubTabs } from "@/components/admin/AdminShell";
+import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
+import { ModerationActionButtons, useModerationActions } from "@/components/admin/ModerationActions";
+import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
 import { Ban } from "lucide-react";
 
 const moderationTabs = [
@@ -15,43 +18,56 @@ const moderationTabs = [
 ];
 
 export default function CancellationModerationPage() {
-  const queryClient = useQueryClient();
-  const [rejectNote, setRejectNote] = useState("");
-  const [rejectingId, setRejectingId] = useState<number | null>(null);
-  const { data: requests = [], isLoading, isError } = useQuery({ queryKey: ["admin-cancel-requests"], queryFn: superadminApi.getCancelRequests });
-  const approve = useMutation({ mutationFn: (id: number) => superadminApi.approveCancelRequest(id), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-cancel-requests"] }) });
-  const reject = useMutation({ mutationFn: (id: number) => superadminApi.rejectCancelRequest(id, rejectNote || "Rad etildi"), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["admin-cancel-requests"] }); setRejectingId(null); setRejectNote(""); } });
+  const isSuperadmin = useRequireSuperadmin();
+  const [statusFilter, setStatusFilter] = useState<"pending" | "all">("pending");
+  const actions = useModerationActions({
+    approveFn: superadminApi.approveCancelRequest,
+    rejectFn: superadminApi.rejectCancelRequest,
+    queryKey: ["admin-cancel-requests"],
+  });
+  const query = useQuery<BookingCancelRequest[]>({
+    queryKey: ["admin-cancel-requests", statusFilter],
+    queryFn: () => superadminApi.getCancelRequests({ status: statusFilter === "all" ? undefined : "pending" }),
+  });
+  const requests = query.data ?? [];
+  const approving = requests.find((request) => request.id === actions.approvingId) ?? null;
+
+  if (!isSuperadmin) return null;
 
   return (
     <AdminShell title="Bekor qilish so'rovlari" subtitle="Ownerlardan kelgan cancel requestlar">
       <AdminSubTabs items={moderationTabs} />
+      <AdminStatusFilterToggle value={statusFilter} onChange={setStatusFilter} />
       <div style={{ display: "grid", gap: 10 }}>
-        {isLoading ? <AdminLoading /> : isError ? <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. So'rovlarni yuklab bo'lmadi.</p></AdminCard> : requests.length === 0 ? <AdminEmptyState icon={<Ban size={28} />} title="Cancel requestlar yo'q" text="Ownerlardan kelgan bekor qilish so'rovlari shu yerda chiqadi." /> : requests.map((request: BookingCancelRequest) => (
+        {query.isLoading ? <AdminLoading /> : query.isError ? <AdminErrorState text="Xatolik yuz berdi. So'rovlarni yuklab bo'lmadi." onRetry={() => query.refetch()} /> : requests.length === 0 ? <AdminEmptyState icon={<Ban size={28} />} title="Cancel requestlar yo'q" text={statusFilter === "pending" ? "Tasdiq kutayotgan bekor qilish so'rovlari yo'q." : "Ownerlardan kelgan bekor qilish so'rovlari shu yerda chiqadi."} /> : requests.map((request) => (
           <AdminCard key={request.id}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <b style={{ fontSize: 17 }}>Bron #{request.booking_id}</b>
               <AdminStatusBadge status={request.status} />
             </div>
             <p style={{ color: "var(--mini-muted)", marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>{request.reason}</p>
-            {request.status === "pending" ? (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <AdminButton onClick={() => approve.mutate(request.id)}>Approve</AdminButton>
-                  <AdminButton tone="red" onClick={() => setRejectingId(rejectingId === request.id ? null : request.id)}>
-                    {rejectingId === request.id ? "Bekor qilish" : "Reject"}
-                  </AdminButton>
-                </div>
-                {rejectingId === request.id ? (
-                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                    <AdminInput placeholder="Rad etish sababi" value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} maxLength={500} />
-                    <AdminButton tone="red" onClick={() => reject.mutate(request.id)}>Tasdiqlash</AdminButton>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+            <ModerationActionButtons
+              pending={request.status === "pending"}
+              rejectNote={actions.rejectNote}
+              rejecting={actions.rejectingId === request.id}
+              busy={actions.reject.isPending}
+              onApprove={() => actions.setApprovingId(request.id)}
+              onToggleReject={() => actions.setRejectingId(actions.rejectingId === request.id ? null : request.id)}
+              onNoteChange={actions.setRejectNote}
+              onReject={() => actions.reject.mutate(request.id)}
+            />
           </AdminCard>
         ))}
       </div>
+      <AdminConfirmDialog
+        open={approving !== null}
+        danger
+        title="Bekor qilish so'rovini tasdiqlash"
+        text={approving ? `Bron #${approving.booking_id} bekor qilinadi va foydalanuvchiga xabar yuboriladi.` : undefined}
+        busy={actions.approve.isPending}
+        onCancel={() => actions.setApprovingId(null)}
+        onConfirm={() => approving && actions.approve.mutate(approving.id)}
+      />
     </AdminShell>
   );
 }

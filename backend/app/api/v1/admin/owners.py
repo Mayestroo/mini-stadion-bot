@@ -1,6 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.audit import write_audit
@@ -15,14 +16,26 @@ from app.schemas.user import AdminUserResponse
 router = APIRouter(prefix="/admin", tags=["Superadmin"])
 
 
-@router.get("/owners", response_model=List[AdminUserResponse])
+@router.get("/owners", response_model=List[AdminUserResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_owners(
+    q: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(User).filter(User.role == UserRole.owner).order_by(User.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    query = db.query(User).filter(User.role == UserRole.owner)
+    if q:
+        pattern = f"%{q.strip()}%"
+        query = query.filter(
+            or_(
+                User.full_name.ilike(pattern),
+                User.phone.ilike(pattern),
+                User.telegram_id.ilike(pattern),
+                User.owner_login.ilike(pattern),
+            )
+        )
+    return query.order_by(User.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/owners", response_model=AdminUserResponse, dependencies=[Depends(rate_limit(max_requests=20, window_seconds=60))])
@@ -70,7 +83,8 @@ def create_owner(
         must_change_password=True,
     )
     db.add(owner)
-    write_audit(db, "owner_created", superadmin, "user", None, {"owner_login": owner_data.owner_login})
+    db.flush()  # assign owner.id before the audit row references it
+    write_audit(db, "owner_created", superadmin, "user", owner.id, {"owner_login": owner_data.owner_login})
     db.commit()
     db.refresh(owner)
     return owner

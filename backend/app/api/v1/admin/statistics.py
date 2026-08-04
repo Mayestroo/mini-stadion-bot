@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_superadmin
+from app.core.ratelimit import rate_limit
 from app.models.analytics import AnalyticsEvent
 from app.models.booking import Booking, BookingStatus
 from app.models.moderation import (
@@ -19,13 +20,22 @@ from app.models.user import User
 
 router = APIRouter(prefix="/admin", tags=["Superadmin"])
 
+# The statistics query fans out into ~9 aggregate scans. Cache the whole
+# payload briefly so a dashboard refresh/F5 loop can't hammer the database.
+_STATS_CACHE_TTL_SECONDS = 60
+_stats_cache: tuple[datetime, dict] | None = None
 
-@router.get("/statistics")
+
+@router.get("/statistics", dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
 def get_statistics(
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
+    global _stats_cache
     now = datetime.now(timezone.utc)
+    if _stats_cache and (now - _stats_cache[0]).total_seconds() < _STATS_CACHE_TTL_SECONDS:
+        return _stats_cache[1]
+
     starts = {
         "today": now.replace(hour=0, minute=0, second=0, microsecond=0),
         "week": now - timedelta(days=7),
@@ -151,7 +161,20 @@ def get_statistics(
         "cancel_requests": db.query(BookingCancelRequest).filter(BookingCancelRequest.status == ModerationStatus.pending).count(),
     }
 
-    return {
+    # Daily revenue for the last 30 days (chart series; gaps filled with 0).
+    daily_rows = (
+        db.query(func.date(Booking.created_at).label("day"), func.sum(Booking.total_price))
+        .filter(Booking.status.in_(revenue_statuses), Booking.created_at >= now - timedelta(days=30))
+        .group_by(func.date(Booking.created_at))
+        .all()
+    )
+    daily_map = {str(day)[:10]: int(total or 0) for day, total in daily_rows}
+    daily_revenue = [
+        {"date": (now - timedelta(days=offset)).strftime("%Y-%m-%d"), "revenue": daily_map.get((now - timedelta(days=offset)).strftime("%Y-%m-%d"), 0)}
+        for offset in range(29, -1, -1)
+    ]
+
+    result = {
         "revenue": revenue,
         "booking_statuses": booking_statuses,
         "total_bookings": total_bookings,
@@ -163,4 +186,7 @@ def get_statistics(
         "top_by_bookings": top_by_bookings,
         "top_by_revenue": top_by_revenue,
         "pending_moderation": pending_moderation,
+        "daily_revenue": daily_revenue,
     }
+    _stats_cache = (now, result)
+    return result

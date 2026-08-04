@@ -80,14 +80,28 @@ TRAINING_APPLY_FIELDS = [
 ]
 
 
-@router.get("/moderation/stadium-drafts", response_model=List[StadiumDraftResponse])
+def _parse_status_filter(status: str | None) -> ModerationStatus | None:
+    if status is None:
+        return None
+    try:
+        return ModerationStatus(status)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Noto'g'ri status")
+
+
+@router.get("/moderation/stadium-drafts", response_model=List[StadiumDraftResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_stadium_drafts(
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(StadiumDraft).order_by(StadiumDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    query = db.query(StadiumDraft)
+    status_filter = _parse_status_filter(status)
+    if status_filter:
+        query = query.filter(StadiumDraft.status == status_filter)
+    return query.order_by(StadiumDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/stadium-drafts/{draft_id}/approve", response_model=StadiumDraftResponse, dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
@@ -151,14 +165,19 @@ def reject_stadium_draft(
     return draft
 
 
-@router.get("/moderation/image-drafts", response_model=List[ImageDraftResponse])
+@router.get("/moderation/image-drafts", response_model=List[ImageDraftResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_image_drafts(
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(StadiumImageDraft).order_by(StadiumImageDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    query = db.query(StadiumImageDraft)
+    status_filter = _parse_status_filter(status)
+    if status_filter:
+        query = query.filter(StadiumImageDraft.status == status_filter)
+    return query.order_by(StadiumImageDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/image-drafts/{draft_id}/approve", response_model=ImageDraftResponse, dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
@@ -224,14 +243,19 @@ def reject_image_draft(
     return draft
 
 
-@router.get("/moderation/cancel-requests", response_model=List[BookingCancelRequestResponse])
+@router.get("/moderation/cancel-requests", response_model=List[BookingCancelRequestResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_cancel_requests(
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(BookingCancelRequest).order_by(BookingCancelRequest.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    query = db.query(BookingCancelRequest)
+    status_filter = _parse_status_filter(status)
+    if status_filter:
+        query = query.filter(BookingCancelRequest.status == status_filter)
+    return query.order_by(BookingCancelRequest.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/cancel-requests/{request_id}/approve", response_model=BookingCancelRequestResponse, dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
@@ -323,14 +347,19 @@ def reject_cancel_request(
 # ---------- Training drafts (mashg'ulot draftlari) ----------
 
 
-@router.get("/moderation/training-drafts", response_model=List[TrainingDraftResponse])
+@router.get("/moderation/training-drafts", response_model=List[TrainingDraftResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_training_drafts(
+    status: str | None = None,
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    return db.query(TrainingDraft).order_by(TrainingDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
+    query = db.query(TrainingDraft)
+    status_filter = _parse_status_filter(status)
+    if status_filter:
+        query = query.filter(TrainingDraft.status == status_filter)
+    return query.order_by(TrainingDraft.created_at.desc()).offset(skip).limit(min(limit, 100)).all()
 
 
 @router.post("/moderation/training-drafts/{draft_id}/approve", response_model=TrainingDraftResponse, dependencies=[Depends(rate_limit(max_requests=30, window_seconds=60))])
@@ -427,7 +456,7 @@ def reject_training_draft(
     return draft
 
 
-@router.get("/trainings", response_model=List[TrainingResponse])
+@router.get("/trainings", response_model=List[TrainingResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_admin_trainings(
     skip: int = 0,
     limit: int = 50,

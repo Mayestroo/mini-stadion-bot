@@ -11,6 +11,7 @@ from app.core.dependencies import get_current_superadmin
 from app.services.notifications import broadcast_target_count, create_broadcast, retry_failed_recipients
 from app.core.ratelimit import rate_limit
 from app.core.sanitize import sanitize_message
+from app.core.settings import get_setting_int
 from app.models.notification import Broadcast, BroadcastAudience, BroadcastRecipient, BroadcastStatus
 from app.models.user import User
 from app.schemas.notification import BroadcastCreate, BroadcastRecipientResponse, BroadcastResponse
@@ -27,7 +28,7 @@ def preview_broadcast_targets(
     return {"target_count": broadcast_target_count(db, BroadcastAudience(data.audience), data.stadium_id)}
 
 
-@router.get("/broadcasts", response_model=List[BroadcastResponse])
+@router.get("/broadcasts", response_model=List[BroadcastResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_broadcasts(
     skip: int = 0,
     limit: int = 50,
@@ -43,9 +44,10 @@ def create_broadcast_message(
     db: Session = Depends(get_db),
     superadmin: User = Depends(get_current_superadmin),
 ):
-    recent = db.query(Broadcast).filter(Broadcast.created_by == superadmin.id, Broadcast.created_at >= datetime.now(timezone.utc) - timedelta(minutes=1)).first()
+    interval = get_setting_int(db, "broadcast_interval_seconds")
+    recent = db.query(Broadcast).filter(Broadcast.created_by == superadmin.id, Broadcast.created_at >= datetime.now(timezone.utc) - timedelta(seconds=interval)).first()
     if recent:
-        raise HTTPException(status_code=429, detail="1 daqiqada faqat bitta ommaviy xabar yuborish mumkin")
+        raise HTTPException(status_code=429, detail=f"{interval} soniyada faqat bitta ommaviy xabar yuborish mumkin")
 
     active = db.query(Broadcast).filter(Broadcast.status.in_([BroadcastStatus.queued, BroadcastStatus.sending])).first()
     if active:
@@ -92,7 +94,7 @@ def retry_broadcast_failed(
     return broadcast
 
 
-@router.get("/broadcasts/{broadcast_id}/recipients", response_model=List[BroadcastRecipientResponse])
+@router.get("/broadcasts/{broadcast_id}/recipients", response_model=List[BroadcastRecipientResponse], dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def get_broadcast_recipients(
     broadcast_id: int,
     skip: int = 0,

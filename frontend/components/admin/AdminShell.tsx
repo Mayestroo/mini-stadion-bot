@@ -3,7 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
+import { superadminApi } from "@/lib/api";
+import { AdminStatistics } from "@/lib/types";
 import { AlertTriangle, CalendarDays, LogOut, Menu, ShieldCheck, Warehouse } from "lucide-react";
 
 
@@ -18,7 +21,7 @@ export class AdminErrorBoundary extends React.Component<{ children: React.ReactN
   render() {
     if (this.state.hasError) {
       return (
-        <div className="mini-app" style={{ maxWidth: 480, margin: "0 auto" }}>
+        <div className="mini-app admin-shell" style={{ margin: "0 auto" }}>
           <main className="mini-page">
             <section className="mini-card" style={{ padding: 16, textAlign: "center" }}>
               <div className="mini-glyph mini-glyph-muted" style={{ width: 58, height: 58, borderRadius: 22, margin: "0 auto 14px" }}>
@@ -55,8 +58,19 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
   const { user, logout } = useAuthStore();
   const items = baseItems;
 
+  // Light-weight pending-moderation badge on the "More" tab; the stats query
+  // is cached (60s TTL server + 30s client), so this is nearly free.
+  const stats = useQuery<AdminStatistics>({
+    queryKey: ["admin-statistics"],
+    queryFn: superadminApi.getStatistics,
+    enabled: user?.role === "superadmin",
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+  const pendingCount = stats.data ? Object.values(stats.data.pending_moderation).reduce((sum, v) => sum + v, 0) : 0;
+
   return (
-    <div className="mini-app" style={{ maxWidth: 480, margin: "0 auto", position: "relative", boxShadow: "0 18px 60px rgba(0,0,0,0.12)" }}>
+    <div className="mini-app admin-shell" style={{ margin: "0 auto", position: "relative", boxShadow: "0 18px 60px rgba(0,0,0,0.12)" }}>
       <main className="mini-page">
         <header className="mini-title-row" style={{ alignItems: "flex-start" }}>
           <div>
@@ -83,15 +97,21 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
         {items.map((item) => {
           const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
           const Icon = item.icon;
+          const showBadge = item.href === "/admin/more" && pendingCount > 0;
           return (
             <Link
               key={item.href}
               href={item.href}
               className={`mini-tab mini-pressable${active ? " mini-tab-active" : ""}`}
-              style={{ textDecoration: "none", minWidth: 0 }}
+              style={{ textDecoration: "none", minWidth: 0, position: "relative" }}
             >
               <Icon size={20} strokeWidth={active ? 2.6 : 2.1} />
               <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+              {showBadge ? (
+                <span style={{ position: "absolute", top: 6, right: 12, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "var(--mini-orange)", color: "white", fontSize: 11, fontWeight: 800, display: "grid", placeItems: "center" }}>
+                  {pendingCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}
@@ -153,6 +173,50 @@ export function AdminEmptyState({ icon, title, text }: { icon: React.ReactNode; 
       <h2 style={{ color: "var(--mini-text)", fontSize: 20, marginBottom: 6 }}>{title}</h2>
       <p style={{ fontSize: 14, lineHeight: 1.4 }}>{text}</p>
     </AdminCard>
+  );
+}
+
+export function AdminErrorState({ onRetry, text = "Xatolik yuz berdi. Qayta urinib ko'ring." }: { onRetry?: () => void; text?: string }) {
+  return (
+    <AdminCard style={{ textAlign: "center", padding: "28px 22px" }}>
+      <p style={{ color: "var(--mini-red)", fontWeight: 700, marginBottom: onRetry ? 14 : 0 }}>{text}</p>
+      {onRetry ? <AdminButton tone="blue" onClick={onRetry}>Qayta urinish</AdminButton> : null}
+    </AdminCard>
+  );
+}
+
+export function AdminLoadMoreButton({ hasMore, loading, onClick }: { hasMore: boolean; loading?: boolean; onClick: () => void }) {
+  if (!hasMore) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+      <AdminButton tone="dark" onClick={onClick} disabled={loading}>{loading ? "Yuklanmoqda..." : "Yana yuklash"}</AdminButton>
+    </div>
+  );
+}
+
+export function AdminStatusFilterToggle({ value, onChange }: { value: "pending" | "all"; onChange: (v: "pending" | "all") => void }) {
+  const options = [
+    { key: "pending", label: "Kutilayotgan" },
+    { key: "all", label: "Barchasi" },
+  ] as const;
+  return (
+    <div className="mini-card-solid" style={{ display: "flex", gap: 6, padding: 6, marginBottom: 12 }}>
+      {options.map((option) => (
+        <button
+          key={option.key}
+          onClick={() => onChange(option.key)}
+          className="mini-pressable"
+          style={{
+            flex: 1, border: 0, borderRadius: 15, padding: "9px 12px", cursor: "pointer",
+            background: value === option.key ? "rgba(52,199,89,0.15)" : "transparent",
+            color: value === option.key ? "var(--mini-green)" : "var(--mini-muted)",
+            fontSize: 13, fontWeight: 750,
+          }}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
   );
 }
 

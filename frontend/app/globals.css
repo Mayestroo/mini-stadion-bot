@@ -828,3 +828,53 @@ body {
   cursor: pointer;
   box-shadow: 0 10px 18px rgba(47,140,255,0.24);
 }
+
+/* ---------- Admin toast ---------- */
+.admin-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  z-index: 300;
+  width: calc(100% - 32px);
+  max-width: 440px;
+  pointer-events: none;
+  animation: admin-toast-in 0.22s ease-out;
+}
+
+.admin-toast-inner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@keyframes admin-toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Admin shell responsive width ----------
+   The admin panel keeps the mini-app look, but gets breathing room on desktop. */
+.admin-shell {
+  max-width: 480px;
+}
+
+@media (min-width: 1024px) {
+  .admin-shell {
+    max-width: 760px;
+  }
+  .admin-shell .mini-tabbar {
+    max-width: calc(760px - 24px);
+  }
+  .admin-shell .mini-page {
+    padding: 28px 28px calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+}

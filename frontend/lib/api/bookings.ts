@@ -1,3 +1,5 @@
+import type { Booking } from "@/lib/types";
+import type { Page } from "./admin";
 import { api } from "./client";
 
 export const bookingApi = {
@@ -13,7 +15,7 @@ export const bookingApi = {
   cancel: (id: number) =>
     api.patch(`/bookings/${id}/cancel`).then((r) => r.data),
 
-  getAllAdmin: (params?: Record<string, any>) =>
+  getAllAdmin: (params?: Record<string, any>): Promise<Page<Booking>> =>
     api.get("/bookings/admin/all", { params }).then((r) => r.data),
 
   updateStatus: (id: number, status: string, adminNote?: string) =>

@@ -1,14 +1,19 @@
 "use client";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { superadminApi } from "@/lib/api";
 import { Training } from "@/lib/types";
 import { sportLabel } from "@/lib/sports";
 import { Dumbbell, Phone, Star } from "lucide-react";
-import { AdminButton, AdminCard, AdminEmptyState, AdminLoading, AdminShell, AdminStatusBadge } from "@/components/admin/AdminShell";
+import { AdminConfirmDialog } from "@/components/admin/AdminConfirmDialog";
+import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
+import { AdminButton, AdminCard, AdminEmptyState, AdminErrorState, AdminLoading, AdminShell, AdminStatusBadge } from "@/components/admin/AdminShell";
 
 export default function AdminTrainings() {
+  const isSuperadmin = useRequireSuperadmin();
   const queryClient = useQueryClient();
-  const { data: trainings = [], isLoading, isError } = useQuery<Training[]>({
+  const [deactivating, setDeactivating] = useState<Training | null>(null);
+  const { data: trainings = [], isLoading, isError, refetch } = useQuery<Training[]>({
     queryKey: ["admin-trainings"],
     queryFn: superadminApi.getTrainings,
   });
@@ -16,15 +21,20 @@ export default function AdminTrainings() {
   const update = useMutation({
     mutationFn: ({ id, data }: { id: number; data: { is_active?: boolean; is_featured?: boolean } }) =>
       superadminApi.updateTraining(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-trainings"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-trainings"] });
+      setDeactivating(null);
+    },
   });
+
+  if (!isSuperadmin) return null;
 
   return (
     <AdminShell title="Mashg'ulotlar" subtitle={`${trainings.length} ta mashg'ulot`}>
       {isLoading ? (
         <AdminLoading />
       ) : isError ? (
-        <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>Xatolik yuz berdi. Mashg'ulotlarni yuklab bo'lmadi.</p></AdminCard>
+        <AdminErrorState text="Xatolik yuz berdi. Mashg'ulotlarni yuklab bo'lmadi." onRetry={() => refetch()} />
       ) : trainings.length === 0 ? (
         <AdminEmptyState icon={<Dumbbell size={28} />} title="Mashg'ulotlar yo'q" text="Ownerlar mashg'ulot qo'shganda ular moderatsiyadan so'ng shu yerda chiqadi." />
       ) : (
@@ -52,7 +62,7 @@ export default function AdminTrainings() {
                   {t.is_featured ? "Topdan olish" : "Topga qo'shish"}
                 </AdminButton>
                 <AdminButton tone={t.is_active ? "red" : "green"} disabled={update.isPending}
-                  onClick={() => update.mutate({ id: t.id, data: { is_active: !t.is_active } })}>
+                  onClick={() => t.is_active ? setDeactivating(t) : update.mutate({ id: t.id, data: { is_active: true } })}>
                   {t.is_active ? "O'chirish" : "Yoqish"}
                 </AdminButton>
               </div>
@@ -60,6 +70,15 @@ export default function AdminTrainings() {
           ))}
         </div>
       )}
+      <AdminConfirmDialog
+        open={deactivating !== null}
+        danger
+        title="Mashg'ulotni o'chirish"
+        text={deactivating ? `"${deactivating.title}" umumiy ro'yxatdan yashirinadi. Keyin qayta yoqish mumkin.` : undefined}
+        busy={update.isPending}
+        onCancel={() => setDeactivating(null)}
+        onConfirm={() => deactivating && update.mutate({ id: deactivating.id, data: { is_active: false } })}
+      />
     </AdminShell>
   );
 }

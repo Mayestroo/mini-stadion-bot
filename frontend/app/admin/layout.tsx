@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth";
 import { authTelegram } from "@/lib/api";
 import { AdminErrorBoundary } from "@/components/admin/AdminShell";
+import { AdminToastProvider } from "@/components/admin/AdminToast";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -57,7 +58,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!checkDone) {
     return (
-      <div className="mini-app" style={{ maxWidth: 480, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="mini-app admin-shell" style={{ margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div className="mini-loader">
           <div className="mini-loader-spinner" />
           <div>Yuklanmoqda...</div>
@@ -66,5 +67,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  return <AdminErrorBoundary>{children}</AdminErrorBoundary>;
+  return (
+    <AdminToastProvider>
+      <AdminErrorBoundary>{children}</AdminErrorBoundary>
+    </AdminToastProvider>
+  );
 }

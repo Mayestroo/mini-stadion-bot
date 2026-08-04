@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck } from "lucide-react";
-import { AdminButton, AdminCard, AdminEmptyState, AdminInput, AdminSelect, AdminShell } from "@/components/admin/AdminShell";
+import { AdminButton, AdminCard, AdminEmptyState, AdminErrorState, AdminInput, AdminSelect, AdminShell } from "@/components/admin/AdminShell";
 import { notificationApi } from "@/lib/api";
 
 type NotificationItem = {
@@ -14,6 +15,8 @@ type NotificationItem = {
   created_at: string;
 };
 
+type NotificationPage = { notifications: NotificationItem[]; unread_count: number };
+
 const notificationTypeLabels: Record<string, string> = {
   booking: "Bron",
   moderation: "Moderatsiya",
@@ -22,35 +25,22 @@ const notificationTypeLabels: Record<string, string> = {
 };
 
 export default function AdminNotificationsPage() {
-  const [items, setItems] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
 
-  const loadNotifications = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await notificationApi.getAll({ q: query || undefined, type: type === "all" ? undefined : type, limit: 80 });
-      setItems(data.notifications || []);
-      setUnreadCount(data.unread_count || 0);
-    } catch {
-      setError("Xatolik yuz berdi");
-    } finally {
-      setLoading(false);
-    }
-  }, [query, type]);
+  const notifications = useQuery<NotificationPage>({
+    queryKey: ["admin-notifications", query, type],
+    queryFn: () => notificationApi.getAll({ q: query || undefined, type: type === "all" ? undefined : type, limit: 80 }),
+    placeholderData: (previous) => previous,
+  });
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  const items = notifications.data?.notifications ?? [];
+  const unreadCount = notifications.data?.unread_count ?? 0;
 
-  const markAllRead = async () => {
-    await notificationApi.markAllRead();
-    await loadNotifications();
-  };
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+  const markAll = useMutation({ mutationFn: () => notificationApi.markAllRead(), onSuccess: invalidate });
+  const markOne = useMutation({ mutationFn: (id: number) => notificationApi.markRead(id), onSuccess: invalidate });
 
   return (
     <AdminShell title="Inbox" subtitle={`${unreadCount} ta o'qilmagan xabar`}>
@@ -59,7 +49,7 @@ export default function AdminNotificationsPage() {
           <strong>Barcha tizim xabarlari</strong>
           <p style={{ color: "var(--mini-muted)", fontSize: 13, marginTop: 4 }}>Bron, moderatsiya va broadcast xabarlari.</p>
         </div>
-        <AdminButton onClick={markAllRead} disabled={unreadCount === 0}>
+        <AdminButton onClick={() => markAll.mutate()} disabled={unreadCount === 0 || markAll.isPending}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><CheckCheck size={16} /> O'qildi</span>
         </AdminButton>
       </AdminCard>
@@ -77,10 +67,10 @@ export default function AdminNotificationsPage() {
         </div>
       </AdminCard>
 
-      {loading ? (
+      {notifications.isLoading ? (
         <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
-      ) : error ? (
-        <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard>
+      ) : notifications.isError ? (
+        <AdminErrorState onRetry={() => notifications.refetch()} />
       ) : items.length === 0 ? (
         <AdminEmptyState icon={<Bell size={26} />} title="Hali xabar yo'q" text="Admin xabarlari shu yerda ko'rinadi." />
       ) : (
@@ -95,7 +85,7 @@ export default function AdminNotificationsPage() {
               <p className="inbox-message">{item.message}</p>
               <div className="inbox-meta-row">
                 <div className="inbox-date">{new Date(item.created_at).toLocaleString("uz-UZ")}</div>
-                {!item.is_read ? <button className="inbox-read-action mini-pressable" onClick={async () => { await notificationApi.markRead(item.id); await loadNotifications(); }}>O'qildi</button> : null}
+                {!item.is_read ? <button className="inbox-read-action mini-pressable" onClick={() => markOne.mutate(item.id)} disabled={markOne.isPending}>O'qildi</button> : null}
               </div>
             </AdminCard>
           ))}

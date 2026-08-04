@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useAuthStore } from "@/store/auth";
-import { BarChart3, Bell, ClipboardCheck, Dumbbell, Megaphone, ScrollText, Users } from "lucide-react";
+import { BarChart3, Bell, ClipboardCheck, Dumbbell, Megaphone, ScrollText, Settings2, UserRound, Users } from "lucide-react";
 import { AdminCard, AdminShell } from "@/components/admin/AdminShell";
 
 const superadminItems = [
+  { href: "/admin/users", label: "Userlar", text: "Qidirish va bloklash", icon: UserRound },
   { href: "/admin/owners", label: "Ownerlar", text: "Owner yaratish va boshqarish", icon: Users },
   { href: "/admin/mashgulotlar", label: "Mashg'ulotlar", text: "Treninglarni boshqarish (top va faol holati)", icon: Dumbbell },
   { href: "/admin/moderation/stadiums", label: "Moderatsiya", text: "Stadion, mashg'ulot, rasm va cancel requestlar", icon: ClipboardCheck },
   { href: "/admin/broadcast", label: "Ommaviy xabar", text: "Broadcast va reklama yuborish", icon: Megaphone },
   { href: "/admin/audit", label: "Audit log", text: "Superadmin action tarixi", icon: ScrollText },
   { href: "/admin/statistics", label: "Statistika", text: "Revenue, booking va bot metrikalari", icon: BarChart3 },
+  { href: "/admin/settings", label: "Sozlamalar", text: "Texnik rejim va broadcast sozlamalari", icon: Settings2 },
 ];
 
 const commonItems = [

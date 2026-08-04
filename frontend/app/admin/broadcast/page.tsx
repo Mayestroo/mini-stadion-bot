@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Megaphone, RefreshCw, RotateCcw, Send } from "lucide-react";
-import { AdminButton, AdminCard, AdminEmptyState, AdminInput, AdminSelect, AdminShell, AdminTextArea } from "@/components/admin/AdminShell";
-import { superadminApi, uploadApi } from "@/lib/api";
+import { AdminButton, AdminCard, AdminEmptyState, AdminErrorState, AdminInput, AdminSelect, AdminShell, AdminTextArea } from "@/components/admin/AdminShell";
+import { useAdminToast } from "@/components/admin/AdminToast";
+import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
+import { stadiumApi, superadminApi, uploadApi } from "@/lib/api";
+import { Stadium } from "@/lib/types";
 
 type Broadcast = {
   id: number;
@@ -33,46 +37,54 @@ type Recipient = {
 const audienceLabels = { users: "Userlar", owners: "Ownerlar", all: "Hamma", booked_users: "Bron qilganlar", stadium_customers: "Stadion mijozlari" };
 
 export default function AdminBroadcastPage() {
+  const isSuperadmin = useRequireSuperadmin();
+  const toast = useAdminToast();
+  const queryClient = useQueryClient();
   const [audience, setAudience] = useState<"users" | "owners" | "all" | "booked_users" | "stadium_customers">("users");
   const [stadiumId, setStadiumId] = useState("");
+  const [stadiumSearch, setStadiumSearch] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [ctaText, setCtaText] = useState("");
   const [ctaUrl, setCtaUrl] = useState("");
   const [parseMode, setParseMode] = useState<"" | "HTML" | "Markdown">("");
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
-  const [recipients, setRecipients] = useState<Record<number, Recipient[]>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState("");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [targetCount, setTargetCount] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const loadBroadcasts = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    setError("");
-    try {
-      setBroadcasts(await superadminApi.getBroadcasts());
-    } catch {
-      setError("Xatolik yuz berdi");
-    } finally {
-      if (showLoading) setLoading(false);
-    }
+  const broadcastsQuery = useQuery<Broadcast[]>({
+    queryKey: ["admin-broadcasts"],
+    queryFn: superadminApi.getBroadcasts,
+    // Poll while any broadcast is in flight; paused automatically in background tabs.
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((b) => b.status === "queued" || b.status === "sending") ? 4000 : false,
+  });
+  const broadcasts = useMemo(() => broadcastsQuery.data ?? [], [broadcastsQuery.data]);
+
+  const expandedBroadcastActive = () => {
+    const expanded = broadcasts.find((b) => b.id === expandedId);
+    return expanded ? expanded.status === "queued" || expanded.status === "sending" : false;
   };
 
-  useEffect(() => {
-    loadBroadcasts();
-  }, []);
+  const recipientsQuery = useQuery<Recipient[]>({
+    queryKey: ["admin-broadcast-recipients", expandedId],
+    queryFn: () => superadminApi.getBroadcastRecipients(expandedId!),
+    enabled: expandedId !== null,
+    refetchInterval: () => (expandedBroadcastActive() ? 4000 : false),
+  });
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      if (!document.hidden) loadBroadcasts(false);
-    }, 5000);
-    return () => window.clearInterval(interval);
-  }, []);
+  const stadiumsQuery = useQuery<Stadium[]>({
+    queryKey: ["admin-broadcast-stadiums"],
+    queryFn: () => stadiumApi.getAll({ limit: 100 }),
+    enabled: isSuperadmin && audience === "stadium_customers",
+    staleTime: 60_000,
+  });
+  const stadiumOptions = (stadiumsQuery.data ?? []).filter((s) =>
+    s.name.toLowerCase().includes(stadiumSearch.trim().toLowerCase())
+  );
 
+  // Debounced target-count preview (mirrors the actual backend filter).
   useEffect(() => {
     if (!title.trim() || !message.trim()) {
       setTargetCount(null);
@@ -89,6 +101,35 @@ export default function AdminBroadcastPage() {
     return () => clearTimeout(timer);
   }, [audience, stadiumId, title, message]);
 
+  const createMutation = useMutation({
+    mutationFn: () => superadminApi.createBroadcast({
+      audience,
+      title,
+      message,
+      stadium_id: stadiumId ? Number(stadiumId) : undefined,
+      image_url: imageUrl || undefined,
+      cta_text: ctaText || undefined,
+      cta_url: ctaUrl || undefined,
+      parse_mode: parseMode || undefined,
+    }),
+    onSuccess: async (broadcast) => {
+      toast.push("green", `${broadcast.total_count} ta qabul qiluvchi uchun navbatga qo'shildi`);
+      setTitle(""); setMessage(""); setImageUrl(""); setCtaText(""); setCtaUrl(""); setParseMode(""); setStadiumId(""); setStadiumSearch("");
+      await queryClient.invalidateQueries({ queryKey: ["admin-broadcasts"] });
+    },
+    onError: (error: any) => {
+      toast.push("red", error.response?.data?.detail || "Xabar yuborishda xatolik yuz berdi");
+    },
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: (id: number) => superadminApi.retryBroadcastFailed(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-broadcasts"] }),
+    onError: (error: any) => {
+      toast.push("red", error.response?.data?.detail || "Qayta yuborishda xatolik yuz berdi");
+    },
+  });
+
   const uploadImage = async (file?: File) => {
     if (!file) return;
     setUploading(true);
@@ -100,68 +141,34 @@ export default function AdminBroadcastPage() {
     }
   };
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!window.confirm(`${audienceLabels[audience]} uchun xabar navbatga qo'shilsinmi?`)) return;
-    setSaving(true);
-    setFeedback("");
-    try {
-      const broadcast = await superadminApi.createBroadcast({
-        audience,
-        title,
-        message,
-        stadium_id: stadiumId ? Number(stadiumId) : undefined,
-        image_url: imageUrl || undefined,
-        cta_text: ctaText || undefined,
-        cta_url: ctaUrl || undefined,
-        parse_mode: parseMode || undefined,
-      });
-      setFeedback(`${broadcast.total_count} ta qabul qiluvchi uchun navbatga qo'shildi`);
-      setTitle("");
-      setMessage("");
-      setImageUrl("");
-      setCtaText("");
-      setCtaUrl("");
-      setParseMode("");
-      setStadiumId("");
-      await loadBroadcasts();
-    } catch (error: any) {
-      setFeedback(error.response?.data?.detail || "Xabar yuborishda xatolik yuz berdi");
-    } finally {
-      setSaving(false);
-    }
+    createMutation.mutate();
   };
 
-  const retryFailed = async (id: number) => {
-    await superadminApi.retryBroadcastFailed(id);
-    await loadBroadcasts(false);
-  };
-
-  const toggleRecipients = async (id: number) => {
-    if (recipients[id]) {
-      setRecipients((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
-      return;
-    }
-    const data = await superadminApi.getBroadcastRecipients(id);
-    setRecipients((current) => ({ ...current, [id]: data }));
-  };
+  if (!isSuperadmin) return null;
 
   return (
     <AdminShell title="Ommaviy xabar" subtitle="Reklama, yangilik yoki bot bo'yicha ogohlantirish yuboring">
       <AdminCard style={{ marginBottom: 12 }}>
         <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-          <AdminSelect value={audience} onChange={(e) => setAudience(e.target.value as "users" | "owners" | "all" | "booked_users" | "stadium_customers")}>
+          <AdminSelect value={audience} onChange={(e) => { setAudience(e.target.value as typeof audience); setStadiumId(""); setStadiumSearch(""); }}>
             <option value="users">Userlar</option>
             <option value="owners">Ownerlar</option>
             <option value="all">Hamma</option>
             <option value="booked_users">Bron qilgan userlar</option>
             <option value="stadium_customers">Ma'lum stadion mijozlari</option>
           </AdminSelect>
-          {audience === "stadium_customers" ? <AdminInput placeholder="Stadion ID" value={stadiumId} onChange={(e) => setStadiumId(e.target.value)} required type="number" min={1} /> : null}
+          {audience === "stadium_customers" ? (
+            <>
+              <AdminInput placeholder="Stadionni qidirish..." value={stadiumSearch} onChange={(e) => setStadiumSearch(e.target.value)} />
+              <AdminSelect value={stadiumId} onChange={(e) => setStadiumId(e.target.value)} required>
+                <option value="">{stadiumsQuery.isLoading ? "Yuklanmoqda..." : "Stadionni tanlang"}</option>
+                {stadiumOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </AdminSelect>
+            </>
+          ) : null}
           <AdminInput placeholder="Sarlavha" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={160} />
           <AdminTextArea placeholder="Xabar matni" value={message} onChange={(e) => setMessage(e.target.value)} required rows={6} />
           <AdminInput placeholder="Rasm URL (ixtiyoriy)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
@@ -188,22 +195,21 @@ export default function AdminBroadcastPage() {
             </div>
           ) : null}
 
-          <AdminButton type="submit" disabled={saving}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Send size={16} /> {saving ? "Navbatga qo'shilmoqda..." : "Previewni tasdiqlab yuborish"}</span>
+          <AdminButton type="submit" disabled={createMutation.isPending}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Send size={16} /> {createMutation.isPending ? "Navbatga qo'shilmoqda..." : "Previewni tasdiqlab yuborish"}</span>
           </AdminButton>
-          {feedback ? <p style={{ color: feedback.includes("xatolik") || feedback.includes("mumkin") || feedback.includes("yuborilmoqda") ? "var(--mini-red)" : "var(--mini-green)", fontSize: 13 }}>{feedback}</p> : null}
         </form>
       </AdminCard>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <h2 style={{ fontSize: 20 }}>So'nggi yuborishlar</h2>
-        <button onClick={() => loadBroadcasts(false)} className="mini-card-solid mini-pressable" style={{ border: 0, borderRadius: 14, padding: 10, color: "var(--mini-blue)" }}><RefreshCw size={16} /></button>
+        <button onClick={() => broadcastsQuery.refetch()} className="mini-card-solid mini-pressable" style={{ border: 0, borderRadius: 14, padding: 10, color: "var(--mini-blue)" }}><RefreshCw size={16} /></button>
       </div>
 
-      {loading ? (
+      {broadcastsQuery.isLoading ? (
         <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div>
-      ) : error ? (
-        <AdminCard><p style={{ color: "var(--mini-red)", fontWeight: 700 }}>{error}</p></AdminCard>
+      ) : broadcastsQuery.isError ? (
+        <AdminErrorState onRetry={() => broadcastsQuery.refetch()} />
       ) : broadcasts.length === 0 ? (
         <AdminEmptyState icon={<Megaphone size={26} />} title="Hali xabar yo'q" text="Yuborilgan ommaviy xabarlar shu yerda ko'rinadi." />
       ) : (
@@ -225,12 +231,14 @@ export default function AdminBroadcastPage() {
                 <span>Xato: {item.failed_count}</span>
               </div>
               <div className="mini-action-row">
-                <AdminButton onClick={() => toggleRecipients(item.id)} tone="dark">Detallar</AdminButton>
-                {item.failed_count > 0 ? <AdminButton onClick={() => retryFailed(item.id)} tone="blue"><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><RotateCcw size={15} /> Qayta</span></AdminButton> : null}
+                <AdminButton onClick={() => setExpandedId(expandedId === item.id ? null : item.id)} tone="dark">Detallar</AdminButton>
+                {item.failed_count > 0 ? <AdminButton onClick={() => retryMutation.mutate(item.id)} tone="blue" disabled={retryMutation.isPending}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><RotateCcw size={15} /> Qayta</span></AdminButton> : null}
               </div>
-              {recipients[item.id] ? (
+              {expandedId === item.id ? (
                 <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
-                  {recipients[item.id].map((recipient) => (
+                  {recipientsQuery.isLoading ? <div className="mini-loader mini-loader-sm"><div className="mini-loader-spinner" /><div>Yuklanmoqda...</div></div> : null}
+                  {recipientsQuery.isError ? <p style={{ color: "var(--mini-red)", fontSize: 13 }}>Qabul qiluvchilarni yuklab bo'lmadi</p> : null}
+                  {(recipientsQuery.data ?? []).map((recipient) => (
                     <div key={recipient.id} className="mini-card-solid" style={{ padding: 10, fontSize: 12 }}>
                       <strong>{recipient.user_name}</strong>
                       <div>Status: {recipient.status} | urinish: {recipient.attempt_count}</div>

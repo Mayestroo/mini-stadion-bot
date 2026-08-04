@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 
+from app.core.audit import write_audit
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
 from app.models.stadium import Stadium
@@ -144,6 +145,8 @@ def create_stadium(
 
     stadium = Stadium(**{k: v for k, v in stadium_data.model_dump().items() if k in ALLOWED_STADIUM_FIELDS}, slug=slug, owner_id=admin.id)
     db.add(stadium)
+    db.flush()  # assign stadium.id before the audit row references it
+    write_audit(db, "stadium_created", admin, "stadium", stadium.id, {"name": stadium.name})
     db.commit()
     db.refresh(stadium)
     return stadium
@@ -174,6 +177,8 @@ def update_stadium(
         if field in ALLOWED_UPDATE_FIELDS:
             setattr(stadium, field, value)
 
+    write_audit(db, "stadium_updated", admin, "stadium", stadium.id,
+                {"fields": sorted(set(update_data) & ALLOWED_UPDATE_FIELDS)})
     db.commit()
     db.refresh(stadium)
     return stadium
@@ -191,5 +196,6 @@ def delete_stadium(
     if admin.role != UserRole.superadmin and stadium.owner_id != admin.id:
         raise HTTPException(status_code=403, detail="Faqat o'z stadioningizni o'chirishingiz mumkin")
     stadium.is_active = False
+    write_audit(db, "stadium_deleted", admin, "stadium", stadium.id, {"name": stadium.name})
     db.commit()
     return {"message": "Stadion o'chirildi"}
