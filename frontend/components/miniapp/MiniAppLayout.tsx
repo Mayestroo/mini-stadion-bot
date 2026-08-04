@@ -89,7 +89,7 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
             >
               {/* Inline SVG: wordmark fill var(--mini-text) orqali dark rejimda
                   avtomatik oq bo'ladi (img-render buni qila olmaydi). */}
-              <svg viewBox="0 0 680 260" role="img" aria-label="Sportly" width="218" height="84" style={{ display: "block" }} xmlns="http://www.w3.org/2000/svg">
+              <svg viewBox="0 0 680 260" role="img" aria-label="Sportly" width="164" height="63" style={{ display: "block" }} xmlns="http://www.w3.org/2000/svg">
                 <rect x="40" y="50" width="160" height="160" rx="36" fill="#D85A30" />
                 <path d="M148 92 C118 82, 88 92, 88 112 C88 130, 108 134, 128 138 C148 142, 152 150, 148 158 C142 168, 116 170, 92 158" fill="none" stroke="#FFFFFF" strokeWidth="12" strokeLinecap="round" />
                 <circle cx="152" cy="160" r="9" fill="#FCDE5A" />
