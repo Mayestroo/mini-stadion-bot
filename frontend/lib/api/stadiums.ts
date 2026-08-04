@@ -4,8 +4,11 @@ export const stadiumApi = {
   getAll: (params?: Record<string, any>) =>
     api.get("/stadiums/", { params }).then((r) => r.data),
 
-  getDistricts: (): Promise<string[]> =>
-    api.get("/stadiums/districts").then((r) => r.data),
+  getRegions: (): Promise<string[]> =>
+    api.get("/stadiums/regions").then((r) => r.data),
+
+  getDistricts: (region?: string): Promise<string[]> =>
+    api.get("/stadiums/districts", { params: region ? { region } : {} }).then((r) => r.data),
 
   getOne: (slug: string) =>
     api.get(`/stadiums/${slug}`).then((r) => r.data),

@@ -4,16 +4,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { ownerApi } from "@/lib/api";
+import { REGIONS } from "@/lib/regions";
 import { OwnerButton, OwnerCard, OwnerInput, OwnerShell } from "@/components/owner/OwnerShell";
 
 export default function NewOwnerStadiumPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", address: "", phone: "", price_per_hour: "", open_time: "08:00", close_time: "23:00", description: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "" });
+  const [form, setForm] = useState({ name: "", address: "", region: "", phone: "", price_per_hour: "", open_time: "08:00", close_time: "23:00", description: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "" });
   const mutation = useMutation({
     mutationFn: () => ownerApi.createDraft({
       ...form,
       price_per_hour: Number(form.price_per_hour),
       working_days: [0, 1, 2, 3, 4, 5, 6],
+      region: form.region || undefined,
       latitude: form.latitude ? Number(form.latitude) : undefined,
       longitude: form.longitude ? Number(form.longitude) : undefined,
       google_map_link: form.google_map_link || undefined,
@@ -35,6 +37,16 @@ export default function NewOwnerStadiumPage() {
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} style={{ display: "grid", gap: 12 }}>
           <OwnerInput placeholder="Stadion nomi" value={form.name} onChange={(e) => setField("name", e.target.value)} required />
           <OwnerInput placeholder="Manzil" value={form.address} onChange={(e) => setField("address", e.target.value)} required />
+          <select
+            value={form.region}
+            onChange={(e) => setField("region", e.target.value)}
+            style={{ width: "100%", border: "1px solid rgba(16,32,21,0.12)", borderRadius: 15, padding: "12px 13px", fontSize: 15, outline: "none", background: "#fbfdfb", color: form.region ? "#102015" : "#8b948c" }}
+          >
+            <option value="">Viloyat (ixtiyoriy)</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
           <div className="mini-responsive-grid-2">
             <OwnerInput placeholder="Latitude (ixtiyoriy)" type="number" step="any" value={form.latitude} onChange={(e) => setField("latitude", e.target.value)} />
             <OwnerInput placeholder="Longitude (ixtiyoriy)" type="number" step="any" value={form.longitude} onChange={(e) => setField("longitude", e.target.value)} />

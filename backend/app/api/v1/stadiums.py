@@ -8,6 +8,7 @@ from app.core.audit import write_audit
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
 from app.core.geo import haversine_km
+from app.core.regions import REGIONS
 from app.models.stadium import Stadium
 from app.models.booking import Booking, BookingStatus
 from app.models.user import User, UserRole
@@ -31,6 +32,7 @@ def slot_has_minimum_lead_time(day: str, slot_time: str) -> bool:
 @router.get("/", response_model=List[StadiumResponse])
 def get_stadiums(
     search: Optional[str] = None,
+    region: Optional[str] = None,
     district: Optional[str] = None,
     sort: Optional[str] = None,
     lat: Optional[float] = Query(None, ge=-90, le=90),
@@ -48,6 +50,8 @@ def get_stadiums(
 
     if search:
         query = query.filter(Stadium.name.ilike(f"%{search}%"))
+    if region:
+        query = query.filter(func.lower(func.trim(Stadium.region)) == region.strip().lower())
     if district:
         # District is free text on the write path, so match case-insensitively.
         query = query.filter(func.lower(func.trim(Stadium.district)) == district.strip().lower())
@@ -86,16 +90,31 @@ def get_stadiums(
     return stadiums
 
 
-# NOTE: must stay above `/{slug}`, otherwise "districts" is parsed as a slug.
-@router.get("/districts")
-def get_districts(db: Session = Depends(get_db)):
-    """Distinct district names from active stadiums, normalized and deduped."""
+# NOTE: must stay above `/{slug}`, otherwise "regions"/"districts" would be
+# parsed as stadium slugs.
+@router.get("/regions")
+def get_stadium_regions(db: Session = Depends(get_db)):
+    """Canonical regions that actually have active stadiums, in canonical order."""
     rows = (
-        db.query(Stadium.district)
-        .filter(Stadium.is_active == True, Stadium.district.isnot(None))
+        db.query(Stadium.region)
+        .filter(Stadium.is_active == True, Stadium.region.isnot(None))
         .distinct()
         .all()
     )
+    present = {(raw or "").strip() for (raw,) in rows if raw}
+    return [region for region in REGIONS if region in present]
+
+
+@router.get("/districts")
+def get_districts(region: Optional[str] = None, db: Session = Depends(get_db)):
+    """Distinct sub-region names (district/city) from active stadiums.
+
+    `region` cascades the filter down to a single viloyat.
+    """
+    query = db.query(Stadium.district).filter(Stadium.is_active == True, Stadium.district.isnot(None))
+    if region:
+        query = query.filter(func.lower(func.trim(Stadium.region)) == region.strip().lower())
+    rows = query.distinct().all()
     seen: dict[str, str] = {}
     for (raw,) in rows:
         value = (raw or "").strip()
@@ -210,7 +229,7 @@ def update_stadium(
         raise HTTPException(status_code=403, detail="Faqat o'z stadioningizni tahrirlashingiz mumkin")
 
     ALLOWED_UPDATE_FIELDS = {
-        "name", "description", "address", "district", "latitude", "longitude",
+        "name", "description", "address", "region", "district", "latitude", "longitude",
         "google_map_link", "yandex_map_link",
         "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
         "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",

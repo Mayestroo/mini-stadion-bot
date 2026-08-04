@@ -38,7 +38,7 @@ export default function AdminStadiums() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 760, fontSize: 17, letterSpacing: "-0.015em" }}>{s.name}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--mini-muted)", marginTop: 4 }}><MapPinned size={13} /> {s.address}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--mini-muted)", marginTop: 4 }}><MapPinned size={13} /> {[s.region, s.district, s.address].filter(Boolean).join(" · ")}</div>
                     <div style={{ color: "var(--mini-green)", fontWeight: 760, fontSize: 14, marginTop: 7 }}>{formatPrice(s.price_per_hour)}/soat</div>
                   </div>
                   <AdminStatusBadge status={s.is_active ? "active" : "inactive"} label={s.is_active ? "Faol" : "Faol emas"} />

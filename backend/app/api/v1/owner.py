@@ -56,6 +56,7 @@ STADIUM_DRAFT_FIELDS = [
     "name",
     "description",
     "address",
+    "region",
     "district",
     "latitude",
     "longitude",

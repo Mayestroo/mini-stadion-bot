@@ -14,6 +14,7 @@ export default function MiniStadiumsPage() {
   const { theme, showAlert } = useTelegram();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [region, setRegion] = useState("");
   const [district, setDistrict] = useState("");
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
@@ -24,17 +25,25 @@ export default function MiniStadiumsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const { data: regions = [] } = useQuery({
+    queryKey: ["miniapp-regions"],
+    queryFn: () => stadiumApi.getRegions(),
+    staleTime: 5 * 60_000,
+  });
+
+  // Districts cascade: only sub-regions of the selected viloyat are offered.
   const { data: districts = [] } = useQuery({
-    queryKey: ["miniapp-districts"],
-    queryFn: () => stadiumApi.getDistricts(),
+    queryKey: ["miniapp-districts", region],
+    queryFn: () => stadiumApi.getDistricts(region || undefined),
     staleTime: 5 * 60_000,
   });
 
   const { data: stadiums = [] } = useQuery({
-    queryKey: ["miniapp-stadiums-list", debouncedSearch, district, coords?.lat, coords?.lng],
+    queryKey: ["miniapp-stadiums-list", debouncedSearch, region, district, coords?.lat, coords?.lng],
     queryFn: () =>
       stadiumApi.getAll({
         search: debouncedSearch || undefined,
+        region: region || undefined,
         district: district || undefined,
         sort: coords ? "nearest" : undefined,
         lat: coords?.lat,
@@ -43,6 +52,11 @@ export default function MiniStadiumsPage() {
       }),
     placeholderData: (previous) => previous,
   });
+
+  const selectRegion = (value: string) => {
+    setRegion(value);
+    setDistrict(""); // sub-region belongs to the previous viloyat
+  };
 
   const textSec = theme === "dark" ? "#8e8e93" : "#6e6e73";
 
@@ -121,20 +135,33 @@ export default function MiniStadiumsPage() {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", margin: "2px -16px 14px", padding: "0 16px 6px", scrollbarWidth: "none" }}>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", margin: "2px -16px 8px", padding: "0 16px 6px", scrollbarWidth: "none" }}>
         <button type="button" className="mini-pressable" style={chipStyle(coords !== null)} onClick={requestLocation} disabled={locating} aria-label="Eng yaqin stadionlar">
           <MapPin size={13} />
           {coords ? "Eng yaqin ✓" : locating ? "Aniqlanmoqda..." : "Eng yaqin"}
         </button>
-        <button type="button" className="mini-pressable" style={chipStyle(district === "")} onClick={() => setDistrict("")}>
+        <button type="button" className="mini-pressable" style={chipStyle(region === "")} onClick={() => selectRegion("")}>
           Hammasi
         </button>
-        {districts.map((d) => (
-          <button key={d} type="button" className="mini-pressable" style={chipStyle(district === d)} onClick={() => setDistrict(d)}>
-            {d}
+        {regions.map((r) => (
+          <button key={r} type="button" className="mini-pressable" style={chipStyle(region === r)} onClick={() => selectRegion(r)}>
+            {r}
           </button>
         ))}
       </div>
+
+      {region && districts.length > 0 ? (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", margin: "0 -16px 6px", padding: "0 16px 6px", scrollbarWidth: "none" }}>
+          <button type="button" className="mini-pressable" style={chipStyle(district === "")} onClick={() => setDistrict("")}>
+            Butun {region}
+          </button>
+          {districts.map((d) => (
+            <button key={d} type="button" className="mini-pressable" style={chipStyle(district === d)} onClick={() => setDistrict(d)}>
+              {d}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mini-list">
         {stadiums.map((s: any) => (

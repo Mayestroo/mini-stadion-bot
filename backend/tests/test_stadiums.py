@@ -1,13 +1,14 @@
 from app.models.stadium import Stadium
 
 
-def _make_stadium(db_session, *, slug, name="Arena", district=None, latitude=None, longitude=None):
+def _make_stadium(db_session, *, slug, name="Arena", region=None, district=None, latitude=None, longitude=None):
     stadium = Stadium(
         name=name,
         slug=slug,
         address="Toshkent",
         phone="+998901234567",
         price_per_hour=100000,
+        region=region,
         district=district,
         latitude=latitude,
         longitude=longitude,
@@ -15,6 +16,15 @@ def _make_stadium(db_session, *, slug, name="Arena", district=None, latitude=Non
     db_session.add(stadium)
     db_session.commit()
     return stadium
+
+
+def _admin_headers(db_session):
+    from app.core.security import create_access_token, get_password_hash
+    from app.models.user import User, UserRole
+    admin = User(full_name="SA", phone="+998907700000", hashed_password=get_password_hash("x"), role=UserRole.superadmin)
+    db_session.add(admin)
+    db_session.commit()
+    return {"Authorization": f"Bearer {create_access_token({'sub': str(admin.id)})}"}
 
 
 def test_list_stadiums_returns_empty(client):
@@ -120,14 +130,7 @@ def test_map_links_absent_without_coordinates(client, db_session):
 
 
 def test_create_stadium_accepts_map_links(client, db_session):
-    from app.core.security import create_access_token, get_password_hash
-    from app.models.user import User, UserRole
-    admin = User(full_name="SA", phone="+998907777777", hashed_password=get_password_hash("x"), role=UserRole.superadmin)
-    db_session.add(admin)
-    db_session.commit()
-    headers = {"Authorization": f"Bearer {create_access_token({'sub': str(admin.id)})}"}
-
-    resp = client.post("/api/v1/stadiums/", headers=headers, json={
+    resp = client.post("/api/v1/stadiums/", headers=_admin_headers(db_session), json={
         "name": "Link Arena",
         "address": "Toshkent",
         "phone": "+998901234567",
@@ -139,3 +142,56 @@ def test_create_stadium_accepts_map_links(client, db_session):
     body = resp.json()
     assert body["google_maps_url"] == "https://goo.gl/maps/arena"
     assert body["yandex_maps_url"] == "https://yandex.uz/maps/-/arena"
+
+
+# ---------- Region ----------
+
+
+def test_regions_endpoint_lists_only_regions_with_stadiums_in_canonical_order(client, db_session):
+    _make_stadium(db_session, slug="r1", region="Samarqand viloyati", district="Samarqand sh.")
+    _make_stadium(db_session, slug="r2", region="Toshkent shahri", district="Chilonzor")
+
+    resp = client.get("/api/v1/stadiums/regions")
+    assert resp.status_code == 200
+    # Canonical order (Toshkent shahri precedes Samarqand), not insertion order.
+    assert resp.json() == ["Toshkent shahri", "Samarqand viloyati"]
+
+
+def test_districts_cascade_by_region(client, db_session):
+    _make_stadium(db_session, slug="c1", region="Toshkent shahri", district="Chilonzor")
+    _make_stadium(db_session, slug="c2", region="Samarqand viloyati", district="Samarqand sh.")
+
+    assert client.get("/api/v1/stadiums/districts", params={"region": "Samarqand viloyati"}).json() == ["Samarqand sh."]
+    assert len(client.get("/api/v1/stadiums/districts").json()) == 2
+
+
+def test_stadium_list_filters_by_region(client, db_session):
+    _make_stadium(db_session, slug="rg1", name="Tashkent Arena", region="Toshkent shahri", district="Chilonzor")
+    _make_stadium(db_session, slug="rg2", name="Samarkand Arena", region="Samarqand viloyati", district="Samarqand sh.")
+
+    resp = client.get("/api/v1/stadiums/", params={"region": "toshkent shahri"})
+    assert resp.status_code == 200
+    assert [s["name"] for s in resp.json()] == ["Tashkent Arena"]
+
+
+def test_create_stadium_rejects_unknown_region(client, db_session):
+    resp = client.post("/api/v1/stadiums/", headers=_admin_headers(db_session), json={
+        "name": "Mars Arena",
+        "address": "Toshkent",
+        "phone": "+998901234567",
+        "price_per_hour": 100000,
+        "region": "Mars viloyati",
+    })
+    assert resp.status_code == 422
+
+
+def test_create_stadium_accepts_valid_region(client, db_session):
+    resp = client.post("/api/v1/stadiums/", headers=_admin_headers(db_session), json={
+        "name": "Surxon Arena",
+        "address": "Termiz",
+        "phone": "+998901234567",
+        "price_per_hour": 100000,
+        "region": "Surxondaryo viloyati",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["region"] == "Surxondaryo viloyati"

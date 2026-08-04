@@ -2,8 +2,10 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 
+from app.core.regions import is_valid_region
+
 ALLOWED_STADIUM_FIELDS = {
-    "name", "description", "address", "district", "latitude", "longitude",
+    "name", "description", "address", "region", "district", "latitude", "longitude",
     "google_map_link", "yandex_map_link",
     "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
     "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",
@@ -11,10 +13,23 @@ ALLOWED_STADIUM_FIELDS = {
 }
 
 
+def _check_region(value: Optional[str]) -> Optional[str]:
+    """Shared region validation for create/update/draft inputs."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if not is_valid_region(value):
+        raise ValueError("Noto'g'ri viloyat")
+    return value
+
+
 class StadiumCreate(BaseModel):
     name: str
     description: Optional[str] = None
     address: str
+    region: Optional[str] = None
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -39,6 +54,11 @@ class StadiumCreate(BaseModel):
     close_time: str = "23:00"
     working_days: List[int] = [0, 1, 2, 3, 4, 5, 6]
 
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v):
+        return _check_region(v)
+
     @field_validator("name", "address", "phone")
     @classmethod
     def strip_and_limit(cls, v):
@@ -61,6 +81,7 @@ class StadiumUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     address: Optional[str] = None
+    region: Optional[str] = None
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -85,6 +106,11 @@ class StadiumUpdate(BaseModel):
     close_time: Optional[str] = None
     working_days: Optional[List[int]] = None
 
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v):
+        return _check_region(v)
+
     @field_validator("name", "address", "phone")
     @classmethod
     def strip_and_limit(cls, v):
@@ -101,6 +127,7 @@ class StadiumResponse(BaseModel):
     slug: str
     description: Optional[str]
     address: str
+    region: Optional[str] = None
     district: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]

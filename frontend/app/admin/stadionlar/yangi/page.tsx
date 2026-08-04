@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { stadiumApi } from "@/lib/api";
+import { REGIONS } from "@/lib/regions";
 import { useRequireSuperadmin } from "@/lib/hooks/useRequireSuperadmin";
 import { AdminButton, AdminCard, AdminInput, AdminSelect, AdminShell, AdminTextArea } from "@/components/admin/AdminShell";
 
@@ -10,7 +11,7 @@ export default function NewStadium() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: "", address: "", phone: "", price_per_hour: 0,
-    description: "", district: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "",
+    description: "", region: "", district: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "",
     has_lighting: false, has_parking: false,
     has_shower: false, has_changing_room: false, has_cafe: false, has_tribunes: false,
     surface: "artificial", open_time: "08:00", close_time: "23:00",
@@ -33,6 +34,7 @@ export default function NewStadium() {
     try {
       await stadiumApi.create({
         ...form,
+        region: form.region || undefined,
         latitude: form.latitude ? Number(form.latitude) : undefined,
         longitude: form.longitude ? Number(form.longitude) : undefined,
         google_map_link: form.google_map_link || undefined,
@@ -64,8 +66,17 @@ export default function NewStadium() {
               <AdminInput value={form.address} onChange={(e) => updateField("address", e.target.value)} required placeholder="Ko'cha va mo'ljal" />
             </FormField>
 
+            <FormField label="Viloyat (ixtiyoriy)">
+              <AdminSelect value={form.region} onChange={(e) => updateField("region", e.target.value)}>
+                <option value="">Tanlanmagan</option>
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </AdminSelect>
+            </FormField>
+
             <FormField label="Tuman">
-              <AdminInput value={form.district} onChange={(e) => updateField("district", e.target.value)} placeholder="Tuman nomi" />
+              <AdminInput value={form.district} onChange={(e) => updateField("district", e.target.value)} placeholder="Tuman yoki shahar nomi" />
             </FormField>
 
             <div className="mini-responsive-grid-2">

@@ -38,6 +38,7 @@ STADIUM_APPLY_FIELDS = [
     "name",
     "description",
     "address",
+    "region",
     "district",
     "latitude",
     "longitude",

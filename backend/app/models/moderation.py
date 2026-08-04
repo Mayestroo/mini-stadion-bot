@@ -36,6 +36,7 @@ class StadiumDraft(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     address = Column(String(300), nullable=False)
+    region = Column(String(80), nullable=True)
     district = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

@@ -17,6 +17,9 @@ class Stadium(Base):
     description = Column(Text, nullable=True)
 
     address = Column(String(300), nullable=False)
+    # Canonical viloyat (see app/core/regions.py); district is the free-text
+    # sub-region (Tashkent district name, city, or tuman).
+    region = Column(String(80), nullable=True, index=True)
     district = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)

@@ -5,9 +5,12 @@ export interface Stadium {
   slug: string;
   description?: string;
   address: string;
+  region?: string;
   district?: string;
   latitude?: number;
   longitude?: number;
+  google_maps_url?: string | null;
+  yandex_maps_url?: string | null;
   phone: string;
   phone2?: string;
   telegram?: string;

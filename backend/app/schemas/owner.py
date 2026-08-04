@@ -4,7 +4,7 @@ from typing import List, Optional
 import re
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from app.schemas.stadium import StadiumCreate
+from app.schemas.stadium import StadiumCreate, _check_region
 from app.schemas.user import PrivateUserResponse, UserResponse
 
 
@@ -99,6 +99,7 @@ class StadiumDraftUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     address: Optional[str] = None
+    region: Optional[str] = None
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -125,6 +126,11 @@ class StadiumDraftUpdate(BaseModel):
     cover_image: Optional[str] = None
     images: Optional[List[str]] = None
 
+    @field_validator("region")
+    @classmethod
+    def validate_region(cls, v):
+        return _check_region(v)
+
 
 class StadiumDraftResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -137,6 +143,7 @@ class StadiumDraftResponse(BaseModel):
     name: str
     description: Optional[str]
     address: str
+    region: Optional[str] = None
     district: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]
