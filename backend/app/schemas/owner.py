@@ -102,6 +102,8 @@ class StadiumDraftUpdate(BaseModel):
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    google_map_link: Optional[str] = None
+    yandex_map_link: Optional[str] = None
     phone: Optional[str] = None
     phone2: Optional[str] = None
     telegram: Optional[str] = None
@@ -138,6 +140,8 @@ class StadiumDraftResponse(BaseModel):
     district: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]
+    google_map_link: Optional[str] = None
+    yandex_map_link: Optional[str] = None
     phone: str
     phone2: Optional[str]
     telegram: Optional[str]

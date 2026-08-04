@@ -59,6 +59,8 @@ STADIUM_DRAFT_FIELDS = [
     "district",
     "latitude",
     "longitude",
+    "google_map_link",
+    "yandex_map_link",
     "phone",
     "phone2",
     "telegram",

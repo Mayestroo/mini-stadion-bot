@@ -10,7 +10,8 @@ export default function NewStadium() {
   const router = useRouter();
   const [form, setForm] = useState({
     name: "", address: "", phone: "", price_per_hour: 0,
-    description: "", district: "", has_lighting: false, has_parking: false,
+    description: "", district: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "",
+    has_lighting: false, has_parking: false,
     has_shower: false, has_changing_room: false, has_cafe: false, has_tribunes: false,
     surface: "artificial", open_time: "08:00", close_time: "23:00",
   });
@@ -30,7 +31,13 @@ export default function NewStadium() {
     setLoading(true);
     setError("");
     try {
-      await stadiumApi.create(form);
+      await stadiumApi.create({
+        ...form,
+        latitude: form.latitude ? Number(form.latitude) : undefined,
+        longitude: form.longitude ? Number(form.longitude) : undefined,
+        google_map_link: form.google_map_link || undefined,
+        yandex_map_link: form.yandex_map_link || undefined,
+      });
       router.push("/admin/stadionlar");
     } catch {
       setError("Stadionni saqlashda xatolik yuz berdi. Ma'lumotlarni tekshirib qayta urinib ko'ring.");
@@ -59,6 +66,23 @@ export default function NewStadium() {
 
             <FormField label="Tuman">
               <AdminInput value={form.district} onChange={(e) => updateField("district", e.target.value)} placeholder="Tuman nomi" />
+            </FormField>
+
+            <div className="mini-responsive-grid-2">
+              <FormField label="Latitude (ixtiyoriy)">
+                <AdminInput type="number" step="any" value={form.latitude} onChange={(e) => updateField("latitude", e.target.value)} placeholder="41.3111" />
+              </FormField>
+              <FormField label="Longitude (ixtiyoriy)">
+                <AdminInput type="number" step="any" value={form.longitude} onChange={(e) => updateField("longitude", e.target.value)} placeholder="69.2797" />
+              </FormField>
+            </div>
+
+            <FormField label="Google Maps link (ixtiyoriy)">
+              <AdminInput value={form.google_map_link} onChange={(e) => updateField("google_map_link", e.target.value)} placeholder="https://maps.google.com/..." />
+            </FormField>
+
+            <FormField label="Yandex Maps link (ixtiyoriy)">
+              <AdminInput value={form.yandex_map_link} onChange={(e) => updateField("yandex_map_link", e.target.value)} placeholder="https://yandex.uz/maps/..." />
             </FormField>
 
             <div className="mini-responsive-grid-2">

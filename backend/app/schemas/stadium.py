@@ -4,6 +4,7 @@ from datetime import datetime
 
 ALLOWED_STADIUM_FIELDS = {
     "name", "description", "address", "district", "latitude", "longitude",
+    "google_map_link", "yandex_map_link",
     "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
     "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",
     "has_parking", "has_cafe", "has_tribunes", "open_time", "close_time", "working_days",
@@ -17,6 +18,8 @@ class StadiumCreate(BaseModel):
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    google_map_link: Optional[str] = None
+    yandex_map_link: Optional[str] = None
     phone: str
     phone2: Optional[str] = None
     telegram: Optional[str] = None
@@ -61,6 +64,8 @@ class StadiumUpdate(BaseModel):
     district: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    google_map_link: Optional[str] = None
+    yandex_map_link: Optional[str] = None
     phone: Optional[str] = None
     phone2: Optional[str] = None
     telegram: Optional[str] = None
@@ -99,6 +104,8 @@ class StadiumResponse(BaseModel):
     district: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]
+    google_maps_url: Optional[str] = None
+    yandex_maps_url: Optional[str] = None
     phone: str
     phone2: Optional[str]
     telegram: Optional[str]
@@ -123,6 +130,8 @@ class StadiumResponse(BaseModel):
     is_featured: bool
     rating: float
     total_bookings: int
+    # Only populated when the list is requested with sort=nearest&lat&lng.
+    distance_km: Optional[float] = None
     created_at: datetime
 
 

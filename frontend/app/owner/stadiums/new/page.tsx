@@ -8,9 +8,17 @@ import { OwnerButton, OwnerCard, OwnerInput, OwnerShell } from "@/components/own
 
 export default function NewOwnerStadiumPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", address: "", phone: "", price_per_hour: "", open_time: "08:00", close_time: "23:00", description: "" });
+  const [form, setForm] = useState({ name: "", address: "", phone: "", price_per_hour: "", open_time: "08:00", close_time: "23:00", description: "", latitude: "", longitude: "", google_map_link: "", yandex_map_link: "" });
   const mutation = useMutation({
-    mutationFn: () => ownerApi.createDraft({ ...form, price_per_hour: Number(form.price_per_hour), working_days: [0, 1, 2, 3, 4, 5, 6] }),
+    mutationFn: () => ownerApi.createDraft({
+      ...form,
+      price_per_hour: Number(form.price_per_hour),
+      working_days: [0, 1, 2, 3, 4, 5, 6],
+      latitude: form.latitude ? Number(form.latitude) : undefined,
+      longitude: form.longitude ? Number(form.longitude) : undefined,
+      google_map_link: form.google_map_link || undefined,
+      yandex_map_link: form.yandex_map_link || undefined,
+    }),
     onSuccess: () => router.push("/owner/moderation"),
   });
 
@@ -27,6 +35,12 @@ export default function NewOwnerStadiumPage() {
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} style={{ display: "grid", gap: 12 }}>
           <OwnerInput placeholder="Stadion nomi" value={form.name} onChange={(e) => setField("name", e.target.value)} required />
           <OwnerInput placeholder="Manzil" value={form.address} onChange={(e) => setField("address", e.target.value)} required />
+          <div className="mini-responsive-grid-2">
+            <OwnerInput placeholder="Latitude (ixtiyoriy)" type="number" step="any" value={form.latitude} onChange={(e) => setField("latitude", e.target.value)} />
+            <OwnerInput placeholder="Longitude (ixtiyoriy)" type="number" step="any" value={form.longitude} onChange={(e) => setField("longitude", e.target.value)} />
+          </div>
+          <OwnerInput placeholder="Google Maps link (ixtiyoriy)" value={form.google_map_link} onChange={(e) => setField("google_map_link", e.target.value)} />
+          <OwnerInput placeholder="Yandex Maps link (ixtiyoriy)" value={form.yandex_map_link} onChange={(e) => setField("yandex_map_link", e.target.value)} />
           <OwnerInput placeholder="Telefon" value={form.phone} onChange={(e) => setField("phone", e.target.value)} required />
           <OwnerInput placeholder="Soatlik narx" type="number" value={form.price_per_hour} onChange={(e) => setField("price_per_hour", e.target.value)} required />
           <div className="mini-responsive-grid-2">

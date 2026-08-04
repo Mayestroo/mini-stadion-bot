@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.audit import write_audit
 from app.core.database import get_db
 from app.core.dependencies import get_current_admin, get_current_superadmin, get_optional_user
+from app.core.geo import haversine_km
 from app.models.stadium import Stadium
 from app.models.booking import Booking, BookingStatus
 from app.models.user import User, UserRole
@@ -30,6 +32,9 @@ def slot_has_minimum_lead_time(day: str, slot_time: str) -> bool:
 def get_stadiums(
     search: Optional[str] = None,
     district: Optional[str] = None,
+    sort: Optional[str] = None,
+    lat: Optional[float] = Query(None, ge=-90, le=90),
+    lng: Optional[float] = Query(None, ge=-180, le=180),
     min_price: Optional[int] = None,
     max_price: Optional[int] = None,
     has_lighting: Optional[bool] = None,
@@ -44,7 +49,8 @@ def get_stadiums(
     if search:
         query = query.filter(Stadium.name.ilike(f"%{search}%"))
     if district:
-        query = query.filter(Stadium.district == district)
+        # District is free text on the write path, so match case-insensitively.
+        query = query.filter(func.lower(func.trim(Stadium.district)) == district.strip().lower())
     if min_price:
         query = query.filter(Stadium.price_per_hour >= min_price)
     if max_price:
@@ -56,8 +62,46 @@ def get_stadiums(
     if featured:
         query = query.filter(Stadium.is_featured == True)
 
+    if sort is not None and sort != "nearest":
+        raise HTTPException(status_code=422, detail="Noto'g'ri saralash turi")
+    if sort == "nearest":
+        if lat is None or lng is None:
+            raise HTTPException(status_code=422, detail="Eng yaqin saralash uchun lat va lng kerak")
+        # Stadium counts are city-scale; Python-side haversine avoids PostGIS
+        # and keeps skip/limit semantics intact after the distance sort.
+        stadiums = query.all()
+        with_coords, without_coords = [], []
+        for stadium in stadiums:
+            if stadium.latitude is None or stadium.longitude is None:
+                without_coords.append(stadium)
+            else:
+                stadium.distance_km = round(haversine_km(lat, lng, stadium.latitude, stadium.longitude), 1)
+                with_coords.append(stadium)
+        default_rank = lambda s: (0 if s.is_featured else 1, -s.rating)
+        with_coords.sort(key=lambda s: (s.distance_km, default_rank(s)))
+        without_coords.sort(key=default_rank)
+        return (with_coords + without_coords)[skip:skip + limit]
+
     stadiums = query.order_by(Stadium.is_featured.desc(), Stadium.rating.desc()).offset(skip).limit(limit).all()
     return stadiums
+
+
+# NOTE: must stay above `/{slug}`, otherwise "districts" is parsed as a slug.
+@router.get("/districts")
+def get_districts(db: Session = Depends(get_db)):
+    """Distinct district names from active stadiums, normalized and deduped."""
+    rows = (
+        db.query(Stadium.district)
+        .filter(Stadium.is_active == True, Stadium.district.isnot(None))
+        .distinct()
+        .all()
+    )
+    seen: dict[str, str] = {}
+    for (raw,) in rows:
+        value = (raw or "").strip()
+        if value and value.lower() not in seen:
+            seen[value.lower()] = value
+    return sorted(seen.values(), key=str.lower)
 
 
 @router.get("/{stadium_id}/availability")
@@ -167,6 +211,7 @@ def update_stadium(
 
     ALLOWED_UPDATE_FIELDS = {
         "name", "description", "address", "district", "latitude", "longitude",
+        "google_map_link", "yandex_map_link",
         "phone", "phone2", "telegram", "price_per_hour", "price_weekend", "price_night",
         "width", "length", "surface", "has_lighting", "has_changing_room", "has_shower",
         "has_parking", "has_cafe", "has_tribunes", "open_time", "close_time", "working_days",

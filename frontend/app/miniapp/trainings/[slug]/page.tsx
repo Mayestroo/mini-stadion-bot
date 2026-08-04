@@ -2,6 +2,8 @@
 import { getImageUrl, trainingApi } from "@/lib/api";
 import { Training } from "@/lib/types";
 import { ageGroupLabel, sportLabel } from "@/lib/sports";
+import { googleMapsUrl, yandexMapsUrl } from "@/lib/maps";
+import { MapButtons } from "@/components/miniapp/MapButtons";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -10,7 +12,6 @@ import {
   Clock,
   ExternalLink,
   MapPin,
-  Navigation,
   Phone,
   Send,
   User,
@@ -122,18 +123,13 @@ export default function MiniTrainingDetail() {
             <InfoRow icon={<MapPin size={17} />} label="Manzil" value={training.address} />
             {training.district ? <InfoRow icon={<MapPin size={17} />} label="Tuman" value={training.district} /> : null}
           </div>
-          {training.latitude && training.longitude && (
-            <a
-              href={`https://maps.google.com/?q=${training.latitude},${training.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", borderRadius: 14, background: "rgba(0,122,255,0.10)", color: "#007aff", fontSize: 14, fontWeight: 700, textDecoration: "none" }}
-            >
-              <Navigation size={16} />
-              Xaritada ko'rish
-              <ExternalLink size={14} />
-            </a>
-          )}
+          {/* Trainings carry only lat/lng — both provider links are built locally. */}
+          {training.latitude && training.longitude ? (
+            <MapButtons
+              googleUrl={googleMapsUrl(training.latitude, training.longitude)}
+              yandexUrl={yandexMapsUrl(training.latitude, training.longitude)}
+            />
+          ) : null}
         </Section>
 
         {training.stadium_slug && training.stadium_name && (

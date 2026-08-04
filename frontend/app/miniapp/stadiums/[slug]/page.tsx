@@ -14,12 +14,11 @@ import {
   CircleCheck,
   Clock,
   Dumbbell,
-  ExternalLink,
   MapPin,
-  Navigation,
   Phone,
   Star
 } from "lucide-react";
+import { MapButtons } from "@/components/miniapp/MapButtons";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -254,18 +253,9 @@ export default function MiniStadiumDetail() {
               value={`${stadium.phone}${stadium.phone2 ? `, ${stadium.phone2}` : ''}`}
             />
           </div>
-          {stadium.latitude && stadium.longitude && (
-            <a
-              href={`https://maps.google.com/?q=${stadium.latitude},${stadium.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 0', borderRadius: 14, background: 'rgba(0,122,255,0.10)', color: '#007aff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
-            >
-              <Navigation size={16} />
-              Xaritada ko'rish
-              <ExternalLink size={14} />
-            </a>
-          )}
+          {/* Custom map links (owner/admin-entered) win on the backend;
+              otherwise both provider links are generated from lat/lng. */}
+          <MapButtons googleUrl={stadium.google_maps_url} yandexUrl={stadium.yandex_maps_url} />
         </Section>
 
         {/* Trainings at this venue */}

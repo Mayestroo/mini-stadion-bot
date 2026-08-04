@@ -32,6 +32,7 @@ export interface Stadium {
   is_featured: boolean;
   rating: number;
   total_bookings: number;
+  distance_km?: number | null;
   created_at: string;
 }
 

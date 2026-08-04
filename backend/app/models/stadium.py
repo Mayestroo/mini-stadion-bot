@@ -20,6 +20,10 @@ class Stadium(Base):
     district = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    # Optional custom map URLs entered by the owner/admin. When absent, the
+    # *_url properties below generate both links from latitude/longitude.
+    google_map_link = Column(String(500), nullable=True)
+    yandex_map_link = Column(String(500), nullable=True)
 
     phone = Column(String(20), nullable=False)
     phone2 = Column(String(20), nullable=True)
@@ -54,6 +58,23 @@ class Stadium(Base):
 
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
+
+    @property
+    def google_maps_url(self) -> str | None:
+        if self.google_map_link:
+            return self.google_map_link
+        if self.latitude is not None and self.longitude is not None:
+            return f"https://www.google.com/maps?q={self.latitude},{self.longitude}"
+        return None
+
+    @property
+    def yandex_maps_url(self) -> str | None:
+        if self.yandex_map_link:
+            return self.yandex_map_link
+        if self.latitude is not None and self.longitude is not None:
+            # Yandex expects coordinates in lng,lat order.
+            return f"https://yandex.com/maps/?pt={self.longitude},{self.latitude}&z=16&l=map"
+        return None
 
     bookings = relationship("Booking", back_populates="stadium", lazy="dynamic")
     trainings = relationship("Training", back_populates="stadium", lazy="dynamic")

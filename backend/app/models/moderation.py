@@ -39,6 +39,8 @@ class StadiumDraft(Base):
     district = Column(String(100), nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    google_map_link = Column(String(500), nullable=True)
+    yandex_map_link = Column(String(500), nullable=True)
 
     phone = Column(String(20), nullable=False)
     phone2 = Column(String(20), nullable=True)

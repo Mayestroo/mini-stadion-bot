@@ -48,7 +48,9 @@ export function MiniStadiumCard({ stadium, onClick }: MiniStadiumCardProps) {
 
       <div className="mini-stadium-body">
         <h3 style={{ fontSize: 23, fontWeight: 900, letterSpacing: "-0.045em", lineHeight: 1.05, margin: 0, color: "white" }}>{stadium.name}</h3>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{stadium.address}</p>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginTop: 5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {stadium.distance_km != null ? `${stadium.distance_km} km · ` : ""}{stadium.address}
+        </p>
 
         {stadium.description && <p className="mini-stadium-description">{stadium.description}</p>}
 
