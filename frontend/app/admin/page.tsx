@@ -8,7 +8,7 @@ import { superadminApi } from "@/lib/api";
 import { AdminStatistics } from "@/lib/types";
 import { formatPrice } from "@/lib/utils";
 import { AdminCard, AdminShell } from "@/components/admin/AdminShell";
-import { BarChart3, CalendarDays, ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, UserRound, Users, Warehouse } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, MessageCircle, ShieldCheck, Sparkles, UserRound, Warehouse } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
 
             {user.role === "superadmin" ? (
               <>
-                <DashboardAction href="/admin/owners" icon={<Users size={22} />} title="Ownerlar" subtitle="Egalari" tone="orange" />
+                <DashboardAction href="/admin/users" icon={<UserRound size={22} />} title="Userlar" subtitle="Rol berish" tone="orange" />
                 <DashboardAction href="/admin/moderation/stadiums" icon={<ClipboardCheck size={22} />} title="Review" subtitle="Tasdiqlar" tone="green" />
                 <DashboardAction href="/admin/statistics" icon={<BarChart3 size={22} />} title="Statistika" subtitle="Analytics" tone="blue" wide />
               </>

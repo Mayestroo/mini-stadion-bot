@@ -33,50 +33,36 @@ export default function MiniAppHome() {
     return <PhoneRequest />;
   }
 
-  if (isAdminRole) {
-    return (
-      <div>
-        <div className="mini-card" style={{ padding: 16, border: "1px solid rgba(0,122,255,0.22)" }}>
-          <div className="mini-eyebrow">Boshqaruv access</div>
-          <h1 style={{ fontSize: 25, fontWeight: 850, letterSpacing: "-0.03em", marginBottom: 6 }}>
-            {user.role === "superadmin" ? "Superadmin panel" : "Moderator panel"}
-          </h1>
-          <p className="mini-subtitle" style={{ marginBottom: 14 }}>
-            {user.role === "superadmin"
-              ? "Statistika, ownerlar, moderatsiya va bronlarni boshqarish."
-              : "Stadionlar va bronlarni operatsion boshqarish."}
-          </p>
-          <div style={{ display: "grid", gap: 10 }}>
-            <ActionCard
-              icon={<ShieldCheck size={22} />}
-              title="Admin panelga o'tish"
-              subtitle={user.role === "superadmin" ? "To'liq boshqaruv" : "Moderator boshqaruvi"}
-              onClick={() => router.push("/admin")}
-              tone="blue"
-            />
-            <ActionCard icon={<MapPinned size={22} />} title="Foydalanuvchi sifatida ko'rish" subtitle="Stadionlar va bron" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
-          </div>
-        </div>
-
-        <p style={{ color: "var(--mini-muted)", fontSize: 13, lineHeight: 1.45, margin: "14px 4px 0" }}>
-          Oddiy foydalanuvchi sahifalarini ko'rish uchun yuqoridagi alohida tugmadan foydalaning.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div>
+
+      {isAdminRole && (
+        <div className="mini-card" style={{ padding: 16, marginBottom: 18, border: "1px solid rgba(0,122,255,0.22)" }}>
+          <div className="mini-eyebrow">Boshqaruv access</div>
+          <h1 style={{ fontSize: 25, fontWeight: 850, letterSpacing: "-0.03em", marginBottom: 6 }}>
+            {user?.role === "superadmin" ? "Superadmin panel" : "Moderator panel"}
+          </h1>
+          <p className="mini-subtitle" style={{ marginBottom: 14 }}>
+            {user?.role === "superadmin"
+              ? "Statistika, userlar, moderatsiya va bronlarni boshqarish."
+              : "Stadionlar va bronlarni operatsion boshqarish."}
+          </p>
+          <ActionCard
+            icon={<ShieldCheck size={22} />}
+            title="Admin panelga o'tish"
+            subtitle={user?.role === "superadmin" ? "To'liq boshqaruv" : "Moderator boshqaruvi"}
+            onClick={() => router.push("/admin")}
+            tone="blue"
+          />
+        </div>
+      )}
 
       {user?.role === "owner" && (
         <div className="mini-card" style={{ padding: 16, marginBottom: 18 }}>
           <div className="mini-eyebrow">Owner access</div>
-          <h1 style={{ fontSize: 25, fontWeight: 850, letterSpacing: "-0.03em", marginBottom: 6 }}>Kabinet tanlang</h1>
-          <p className="mini-subtitle" style={{ marginBottom: 14 }}>Siz stadion egasi sifatida tanildingiz. Oddiy foydalanuvchi ko'rinishi yoki owner kabinetga o'ting.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-            <ActionCard icon={<MapPinned size={22} />} title="Foydalanuvchi sifatida ko'rish" subtitle="Stadionlar va bron" onClick={() => router.push("/miniapp/stadiums")} tone="green" />
-            <ActionCard icon={<ShieldCheck size={22} />} title="Owner kabinet" subtitle="Login/parol bilan kirish" onClick={() => router.push("/owner/login")} tone="blue" />
-          </div>
+          <h1 style={{ fontSize: 25, fontWeight: 850, letterSpacing: "-0.03em", marginBottom: 6 }}>Owner kabinet</h1>
+          <p className="mini-subtitle" style={{ marginBottom: 14 }}>Siz stadion egasi sifatida tanildingiz. Stadionlaringizni owner kabinetda boshqaring.</p>
+          <ActionCard icon={<ShieldCheck size={22} />} title="Owner kabinetga o'tish" subtitle="Telegram orqali avtomatik kirish" onClick={() => router.push("/owner")} tone="blue" />
         </div>
       )}
 
