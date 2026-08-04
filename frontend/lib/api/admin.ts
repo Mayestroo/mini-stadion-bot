@@ -19,7 +19,7 @@ export const superadminApi = {
   getStatistics: () => api.get("/admin/statistics").then((r) => r.data),
   getUsers: (params?: Record<string, any>): Promise<Page<User>> => api.get("/admin/users", { params }).then((r) => r.data),
   toggleUserBlock: (id: number): Promise<User> => api.post(`/admin/users/${id}/block`).then((r) => r.data),
-  setUserRole: (id: number, role: "user" | "moderator"): Promise<User> => api.post(`/admin/users/${id}/role`, { role }).then((r) => r.data),
+  setUserRole: (id: number, role: "user" | "moderator" | "owner"): Promise<User> => api.post(`/admin/users/${id}/role`, { role }).then((r) => r.data),
   getSettings: (): Promise<SettingItem[]> => api.get("/admin/settings").then((r) => r.data),
   updateSetting: (key: string, value: string): Promise<SettingItem> => api.patch(`/admin/settings/${key}`, { value }).then((r) => r.data),
   getOwners: (params?: Record<string, any>): Promise<User[]> => api.get("/admin/owners", { params }).then((r) => r.data),

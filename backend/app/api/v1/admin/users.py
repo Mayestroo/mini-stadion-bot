@@ -20,10 +20,11 @@ class RoleUpdate(BaseModel):
     @field_validator("role")
     @classmethod
     def validate_role(cls, value: str) -> str:
-        # Only these two are manageable here: owner promotion goes through the
-        # owners flow, superadmin is env-controlled.
-        if value not in ("user", "moderator"):
-            raise ValueError("Faqat user yoki moderator roli belgilanadi")
+        # Owner assigned here is Telegram-ID based (no login/password — the
+        # owners flow at /admin/owners remains for credential-based owners).
+        # superadmin stays env-controlled and is never assignable through the API.
+        if value not in ("user", "moderator", "owner"):
+            raise ValueError("Faqat user, moderator yoki owner roli belgilanadi")
         return value
 
 
@@ -107,6 +108,10 @@ def set_user_role(
     new_role = UserRole(data.role)
     if user.role == new_role:
         raise HTTPException(status_code=400, detail="Bu rol allaqachon berilgan")
+    if new_role == UserRole.owner and not user.telegram_id:
+        # Owner access is Telegram-ID-auth only, so the role is meaningless
+        # (and would widen attack surface) on an account with no Telegram link.
+        raise HTTPException(status_code=400, detail="Owner rol faqat Telegram ID'ga ulangan foydalanuvchiga beriladi")
 
     old_role = user.role.value
     user.role = new_role

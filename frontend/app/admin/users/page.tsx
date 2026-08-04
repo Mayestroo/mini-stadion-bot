@@ -28,7 +28,9 @@ export default function AdminUsersPage() {
   const [q, setQ] = useState("");
   const [role, setRole] = useState("");
   const [blocking, setBlocking] = useState<User | null>(null);
-  const [roleTarget, setRoleTarget] = useState<User | null>(null);
+  // A pending role change carries both the user and the target role, since a
+  // user row can now promote to moderator or owner / demote to plain user.
+  const [roleAction, setRoleAction] = useState<{ user: User; to: "user" | "moderator" | "owner" } | null>(null);
 
   // Debounce the search box so every keystroke doesn't hit the API.
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -62,14 +64,14 @@ export default function AdminUsersPage() {
   });
 
   const roleChange = useMutation({
-    mutationFn: ({ id, role }: { id: number; role: "user" | "moderator" }) => superadminApi.setUserRole(id, role),
+    mutationFn: ({ id, role }: { id: number; role: "user" | "moderator" | "owner" }) => superadminApi.setUserRole(id, role),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      setRoleTarget(null);
+      setRoleAction(null);
       toast.push("green", `Rol yangilandi: ${updated.full_name} → ${roleLabels[updated.role] || updated.role}`);
     },
     onError: (error: any) => {
-      setRoleTarget(null);
+      setRoleAction(null);
       toast.push("red", error.response?.data?.detail || "Rolni o'zgartirib bo'lmadi");
     },
   });
@@ -129,9 +131,23 @@ export default function AdminUsersPage() {
                       </span>
                     </AdminButton>
                     {(u.role === "user" || u.role === "moderator") ? (
-                      <AdminButton tone="blue" onClick={() => setRoleTarget(u)}>
+                      <>
+                        <AdminButton tone="blue" onClick={() => setRoleAction({ user: u, to: u.role === "moderator" ? "user" : "moderator" })}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                            <SlidersHorizontal size={15} /> {u.role === "moderator" ? "Oddiy userga tushirish" : "Moderator qilish"}
+                          </span>
+                        </AdminButton>
+                        <AdminButton tone="blue" onClick={() => setRoleAction({ user: u, to: "owner" })}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                            <SlidersHorizontal size={15} /> Owner qilish
+                          </span>
+                        </AdminButton>
+                      </>
+                    ) : null}
+                    {u.role === "owner" ? (
+                      <AdminButton tone="blue" onClick={() => setRoleAction({ user: u, to: "user" })}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                          <SlidersHorizontal size={15} /> {u.role === "moderator" ? "Oddiy userga tushirish" : "Moderator qilish"}
+                          <SlidersHorizontal size={15} /> Ownerlikdan olish
                         </span>
                       </AdminButton>
                     ) : null}
@@ -158,17 +174,29 @@ export default function AdminUsersPage() {
         onConfirm={() => blocking && block.mutate(blocking.id)}
       />
       <AdminConfirmDialog
-        open={roleTarget !== null}
-        danger={roleTarget?.role === "moderator"}
-        title={roleTarget?.role === "moderator" ? "Moderatorlikdan olish" : "Moderator qilish"}
-        text={roleTarget
-          ? roleTarget.role === "moderator"
-            ? `${roleTarget.full_name} admin panel huquqlarini yo'qotadi va qayta login bo'ladi.`
-            : `${roleTarget.full_name} admin panelga (bronlar, bildirishnomalar) kirish huquqiga ega bo'ladi va qayta login bo'ladi.`
+        open={roleAction !== null}
+        danger={roleAction?.to === "user"}
+        title={roleAction
+          ? roleAction.to === "owner"
+            ? "Owner qilish"
+            : roleAction.user.role === "owner"
+              ? "Ownerlikdan olish"
+              : roleAction.to === "moderator"
+                ? "Moderator qilish"
+                : "Moderatorlikdan olish"
+          : ""}
+        text={roleAction
+          ? roleAction.to === "owner"
+            ? `${roleAction.user.full_name} keyingi safar Telegram orqali kirganda owner huquqlariga ega bo'ladi — login/parol kerak emas. Joriy sessiyalari bekor qilinadi.`
+            : roleAction.user.role === "owner"
+              ? `${roleAction.user.full_name} owner huquqlarini yo'qotadi va joriy sessiyalari bekor qilinadi.`
+              : roleAction.to === "moderator"
+                ? `${roleAction.user.full_name} admin panelga (bronlar, bildirishnomalar) kirish huquqiga ega bo'ladi va qayta login bo'ladi.`
+                : `${roleAction.user.full_name} admin panel huquqlarini yo'qotadi va qayta login bo'ladi.`
           : undefined}
         busy={roleChange.isPending}
-        onCancel={() => setRoleTarget(null)}
-        onConfirm={() => roleTarget && roleChange.mutate({ id: roleTarget.id, role: roleTarget.role === "moderator" ? "user" : "moderator" })}
+        onCancel={() => setRoleAction(null)}
+        onConfirm={() => roleAction && roleChange.mutate({ id: roleAction.user.id, role: roleAction.to })}
       />
     </AdminShell>
   );

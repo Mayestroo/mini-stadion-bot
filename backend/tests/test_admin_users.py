@@ -288,14 +288,57 @@ def test_role_change_guards(client, db_session, superadmin, admin_headers, regul
     # superadmin target
     assert client.post(f"/api/v1/admin/users/{other_admin.id}/role",
                        headers=admin_headers, json={"role": "user"}).status_code == 400
-    # unmanaged role
+    # unmanaged role (superadmin is env-controlled, never assignable via API)
     assert client.post(f"/api/v1/admin/users/{regular_user.id}/role",
-                       headers=admin_headers, json={"role": "owner"}).status_code == 422
+                       headers=admin_headers, json={"role": "superadmin"}).status_code == 422
     # same role
     assert client.post(f"/api/v1/admin/users/{regular_user.id}/role",
                        headers=admin_headers, json={"role": "user"}).status_code == 400
     # missing user
     assert client.post("/api/v1/admin/users/99999/role", headers=admin_headers, json={"role": "user"}).status_code == 404
+
+
+def test_owner_role_assign_revoke_and_audit(client, db_session, superadmin, admin_headers):
+    tg_user = _create_user(db_session, full_name="Telegram User", phone="+998906666666", role=UserRole.user)
+    tg_user.telegram_id = "99887766"
+    db_session.commit()
+
+    # Assign: next Telegram auth grants owner permissions, old sessions die.
+    old_headers = _headers_for(tg_user)
+    resp = client.post(f"/api/v1/admin/users/{tg_user.id}/role",
+                       headers=admin_headers, json={"role": "owner"})
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "owner"
+    assert client.get("/api/v1/bookings/my", headers=old_headers).status_code in (400, 401)
+
+    entry = (db_session.query(AuditLog)
+             .filter(AuditLog.action == "role_changed", AuditLog.entity_id == tg_user.id)
+             .order_by(AuditLog.id.desc()).first())
+    assert entry is not None and entry.metadata_json == {"from": "user", "to": "owner"}
+    assert entry.actor_id == superadmin.id
+
+    # Revoke: back to a plain user, audited the same way.
+    resp = client.post(f"/api/v1/admin/users/{tg_user.id}/role",
+                       headers=admin_headers, json={"role": "user"})
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "user"
+    entry = (db_session.query(AuditLog)
+             .filter(AuditLog.action == "role_changed", AuditLog.entity_id == tg_user.id)
+             .order_by(AuditLog.id.desc()).first())
+    assert entry.metadata_json == {"from": "owner", "to": "user"}
+
+
+def test_owner_role_requires_telegram_id(client, superadmin, admin_headers, regular_user):
+    resp = client.post(f"/api/v1/admin/users/{regular_user.id}/role",
+                       headers=admin_headers, json={"role": "owner"})
+    assert resp.status_code == 400
+    assert regular_user.role == UserRole.user  # unchanged
+
+
+def test_owner_role_assign_requires_superadmin(client, regular_user):
+    resp = client.post(f"/api/v1/admin/users/{regular_user.id}/role",
+                       headers=_headers_for(regular_user), json={"role": "owner"})
+    assert resp.status_code == 403
 
 
 # ---------- Settings ----------
