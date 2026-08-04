@@ -5,6 +5,7 @@ import { useTelegram } from "./TelegramProvider";
 import { Bell, CalendarCheck, CircleUserRound, LogOut, MapPinned, Menu } from "lucide-react";
 import { notificationApi, authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { BackButton } from "@/components/common/BackButton";
 
 const tabs = [
   { href: "/miniapp", label: "Stadionlar", icon: MapPinned },
@@ -25,6 +26,14 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const hideTabbar = pathname.startsWith("/miniapp/stadiums/");
   const moreActive = moreItems.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  // Back button only on inner list pages: tab roots navigate via the tabbar and
+  // detail pages carry their own floating back button over the hero image.
+  const segments = pathname.split("/").filter(Boolean);
+  const showBackButton =
+    segments[0] === "miniapp" &&
+    segments.length === 2 &&
+    segments[1] !== "bookings" &&
+    segments[1] !== "notifications";
 
   useEffect(() => {
     if (!hydrated || !ready) return;
@@ -65,6 +74,11 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mini-app max-w-120 mx-auto min-h-screen relative shadow-2xl bg-white dark:bg-black" data-theme={theme}>
       <main className="mini-page">
+        {showBackButton ? (
+          <div style={{ display: "flex", marginBottom: 12 }}>
+            <BackButton />
+          </div>
+        ) : null}
         {children}
       </main>
 

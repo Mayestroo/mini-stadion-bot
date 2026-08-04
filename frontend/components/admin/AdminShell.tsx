@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
 import { superadminApi } from "@/lib/api";
 import { AdminStatistics } from "@/lib/types";
+import { BackButton } from "@/components/common/BackButton";
 import { AlertTriangle, CalendarDays, LogOut, Menu, ShieldCheck, Warehouse } from "lucide-react";
 
 
@@ -73,12 +74,15 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
     <div className="mini-app admin-shell" style={{ margin: "0 auto", position: "relative", boxShadow: "0 18px 60px rgba(0,0,0,0.12)" }}>
       <main className="mini-page">
         <header className="mini-title-row" style={{ alignItems: "flex-start" }}>
-          <div>
-            <div className="mini-eyebrow" style={{ color: "var(--mini-green)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
-              {user?.role === "superadmin" ? "Superadmin" : "Moderator"}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0 }}>
+            {pathname !== "/admin" ? <BackButton fallback="/admin" style={{ marginTop: 4 }} /> : null}
+            <div style={{ minWidth: 0 }}>
+              <div className="mini-eyebrow" style={{ color: "var(--mini-green)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800 }}>
+                {user?.role === "superadmin" ? "Superadmin" : "Moderator"}
+              </div>
+              <h1 className="mini-large-title">{title}</h1>
+              {subtitle ? <p className="mini-subtitle">{subtitle}</p> : null}
             </div>
-            <h1 className="mini-large-title">{title}</h1>
-            {subtitle ? <p className="mini-subtitle">{subtitle}</p> : null}
           </div>
           <button
             onClick={() => { logout(); router.push("/miniapp"); }}

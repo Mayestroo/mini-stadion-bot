@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ownerApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { BackButton } from "@/components/common/BackButton";
 import { BarChart3, Bell, CalendarDays, ClipboardCheck, Dumbbell, LogOut, Shield, Users, Warehouse } from "lucide-react";
 
 const navItems = [
@@ -36,11 +37,14 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
       <div style={{ maxWidth: 520, margin: "0 auto", minHeight: "100dvh", padding: "18px 14px 96px" }}>
         <header style={{ color: "white", marginBottom: 18 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.72)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                <Shield size={15} /> Owner kabinet
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              {pathname !== "/owner" ? <BackButton fallback="/owner" variant="light" /> : null}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.72)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  <Shield size={15} /> Owner kabinet
+                </div>
+                <h1 style={{ fontSize: 27, lineHeight: 1.05, fontWeight: 900, letterSpacing: "-0.04em", marginTop: 7 }}>{user?.full_name || "Owner"}</h1>
               </div>
-              <h1 style={{ fontSize: 27, lineHeight: 1.05, fontWeight: 900, letterSpacing: "-0.04em", marginTop: 7 }}>{user?.full_name || "Owner"}</h1>
             </div>
             <button
               onClick={() => { logout(); router.push("/owner/login"); }}
