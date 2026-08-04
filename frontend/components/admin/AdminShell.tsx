@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/auth";
 import { superadminApi } from "@/lib/api";
 import { AdminStatistics } from "@/lib/types";
 import { BackButton } from "@/components/common/BackButton";
-import { AlertTriangle, CalendarDays, LogOut, Menu, ShieldCheck, Warehouse } from "lucide-react";
+import { AlertTriangle, CalendarDays, Home, Menu, ShieldCheck, Warehouse } from "lucide-react";
 
 
 export class AdminErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error?: Error }> {
@@ -56,7 +56,7 @@ const baseItems = [
 export function AdminShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const items = baseItems;
 
   // Light-weight pending-moderation badge on the "More" tab; the stats query
@@ -84,13 +84,16 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
               {subtitle ? <p className="mini-subtitle">{subtitle}</p> : null}
             </div>
           </div>
+          {/* Panelni yopish — mini-appga qaytish. Logout bu yerda emas:
+              u sessiyani o'chirardi va qaytishda qayta auth talab qilardi
+              (Mini-app "More" menyusida alohida mavjud). */}
           <button
-            onClick={() => { logout(); router.push("/miniapp"); }}
+            onClick={() => router.push("/miniapp")}
             className="mini-card-solid mini-pressable"
-            style={{ width: 44, height: 44, display: "grid", placeItems: "center", borderRadius: 16, color: "var(--mini-red)", cursor: "pointer" }}
-            aria-label="Chiqish"
+            style={{ width: 44, height: 44, display: "grid", placeItems: "center", borderRadius: 16, color: "var(--mini-text)", cursor: "pointer" }}
+            aria-label="Mini-appga qaytish"
           >
-            <LogOut size={18} />
+            <Home size={18} />
           </button>
         </header>
 

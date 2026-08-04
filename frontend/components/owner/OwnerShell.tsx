@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ownerApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { BackButton } from "@/components/common/BackButton";
-import { BarChart3, Bell, CalendarDays, ClipboardCheck, Dumbbell, LogOut, Shield, Users, Warehouse } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, ClipboardCheck, Dumbbell, Home, Shield, Users, Warehouse } from "lucide-react";
 
 const navItems = [
   { href: "/owner", label: "Dashboard", icon: BarChart3 },
@@ -21,7 +21,7 @@ const navItems = [
 export function OwnerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -46,12 +46,14 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
                 <h1 style={{ fontSize: 27, lineHeight: 1.05, fontWeight: 900, letterSpacing: "-0.04em", marginTop: 7 }}>{user?.full_name || "Owner"}</h1>
               </div>
             </div>
+            {/* Kabinetni yopish — mini-appga qaytish. Logout bu yerda emas:
+                sessiyani o'chirish Telegram ichida qayta auth talab qilardi. */}
             <button
-              onClick={() => { logout(); router.push("/owner/login"); }}
+              onClick={() => router.push("/miniapp")}
               style={{ border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 16, width: 44, height: 44, display: "grid", placeItems: "center", cursor: "pointer" }}
-              aria-label="Chiqish"
+              aria-label="Mini-appga qaytish"
             >
-              <LogOut size={18} />
+              <Home size={18} />
             </button>
           </div>
         </header>
