@@ -27,8 +27,11 @@ async def lifespan(app: FastAPI):
     try:
         run_migrations()
         logger.info("Database migrations applied")
-    except Exception as e:
-        logger.warning("Database migration failed: %s", e)
+    except Exception:
+        # Serving traffic against an unmigrated schema is worse than not
+        # starting at all. run_migrations() is a no-op on SQLite (tests).
+        logger.exception("Database migration failed; refusing to start")
+        raise
     yield
     logger.info("Shutting down Sportly API server")
 

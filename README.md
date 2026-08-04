@@ -1,6 +1,8 @@
-# Sportly — Mini futbol bron qilish platformasi
+# Sportly — Mini futbol bron qilish va sport mashg'ulotlari platformasi
 
-Telegram bot + web ilova orqali mini futbol stadionlarini topish, solishtirish va bron qilish.
+Telegram bot + web ilova orqali:
+1. **Mini stadionlar** — stadionlarni topish, solishtirish va onlayn bron qilish (to'liq booking tizimi).
+2. **Sport mashg'ulotlari** — treninglarni topish va murabbiy bilan bevosita bog'lanish (telefon/Telegram/Instagram orqali, bron qilinsiz katalog).
 
 ## Tech Stack
 

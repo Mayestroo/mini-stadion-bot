@@ -5,11 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ownerApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
-import { BarChart3, Bell, CalendarDays, ClipboardCheck, LogOut, Shield, Users, Warehouse } from "lucide-react";
+import { BarChart3, Bell, CalendarDays, ClipboardCheck, Dumbbell, LogOut, Shield, Users, Warehouse } from "lucide-react";
 
 const navItems = [
   { href: "/owner", label: "Dashboard", icon: BarChart3 },
   { href: "/owner/stadiums/new", label: "Stadion", icon: Warehouse },
+  { href: "/owner/trainings", label: "Mashg'ulot", icon: Dumbbell },
   { href: "/owner/bookings", label: "Bronlar", icon: CalendarDays },
   { href: "/owner/moderation", label: "Status", icon: ClipboardCheck },
   { href: "/owner/customers", label: "Mijozlar", icon: Users },
@@ -54,7 +55,7 @@ export function OwnerShell({ children }: { children: React.ReactNode }) {
         {children}
       </div>
 
-      <nav style={{ position: "fixed", left: "50%", bottom: 12, transform: "translateX(-50%)", width: "calc(100% - 24px)", maxWidth: 496, display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 4, padding: 6, borderRadius: 24, background: "rgba(255,255,255,0.86)", border: "1px solid rgba(16,32,21,0.1)", boxShadow: "0 18px 50px rgba(7,20,13,0.18)", backdropFilter: "blur(18px)" }}>
+      <nav style={{ position: "fixed", left: "50%", bottom: 12, transform: "translateX(-50%)", width: "calc(100% - 24px)", maxWidth: 496, display: "grid", gridTemplateColumns: `repeat(${navItems.length}, 1fr)`, gap: 4, padding: 6, borderRadius: 24, background: "rgba(255,255,255,0.86)", border: "1px solid rgba(16,32,21,0.1)", boxShadow: "0 18px 50px rgba(7,20,13,0.18)", backdropFilter: "blur(18px)" }}>
         {navItems.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
