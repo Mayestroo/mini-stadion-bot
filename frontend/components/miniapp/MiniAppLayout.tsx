@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTelegram } from "./TelegramProvider";
@@ -80,6 +81,15 @@ export function MiniAppLayout({ children }: { children: React.ReactNode }) {
         {showBackButton || showBell ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
             {showBackButton ? <BackButton /> : null}
+            <button
+              type="button"
+              onClick={() => router.push("/miniapp")}
+              aria-label="Bosh sahifa"
+              className="mini-pressable"
+              style={{ border: 0, background: "none", display: "flex", alignItems: "center", cursor: "pointer", padding: 0, color: "var(--mini-text)" }}
+            >
+              <Image src="/sportly_logo.svg" alt="Sportly" width={73} height={28} style={{ display: "block" }} />
+            </button>
             {showBell ? (
               <button
                 type="button"
